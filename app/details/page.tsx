@@ -163,13 +163,17 @@ export default function SavingsPlanDetails() {
             <motion.div
               key={i}
               initial={{
-                x: Math.random() * window.innerWidth,
+                x:
+                  typeof window !== "undefined"
+                    ? Math.random() * window.innerWidth
+                    : Math.random() * 1200,
                 y: -20,
                 opacity: 1,
                 scale: Math.random() * 0.5 + 0.5,
               }}
               animate={{
-                y: window.innerHeight + 20,
+                y:
+                  typeof window !== "undefined" ? window.innerHeight + 20 : 800,
                 opacity: 0,
                 rotate: Math.random() * 360,
               }}
