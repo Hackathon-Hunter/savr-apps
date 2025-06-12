@@ -12,6 +12,7 @@ import {
   Lightbulb,
   PieChart,
   ArrowLeft,
+  Settings,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
@@ -30,11 +31,15 @@ export default function AnalysisResults() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
+  // Mock ICP to USD conversion rate (this would come from an API in real app)
+  const icpToUsd = 12.45; // Example rate: 1 ICP = $12.45 USD
+
   const recommendations = [
     {
       title: "Optimal Savings Rate",
       description: "Save 15% of your monthly income",
-      amount: "$750/month",
+      amount: "60.24 ICP/month",
+      amountUsd: "≈ $750/month",
       icon: TrendingUp,
       priority: "high",
     },
@@ -42,13 +47,15 @@ export default function AnalysisResults() {
       title: "Timeline Prediction",
       description: "Reach your goal in 18 months",
       amount: "Feb 2026",
+      amountUsd: "",
       icon: Calendar,
       priority: "medium",
     },
     {
       title: "Emergency Buffer",
       description: "Build 3-month emergency fund first",
-      amount: "$4,500",
+      amount: "361.45 ICP",
+      amountUsd: "≈ $4,500",
       icon: CheckCircle,
       priority: "high",
     },
@@ -62,9 +69,13 @@ export default function AnalysisResults() {
   ];
 
   const handleStartPlan = () => {
-    // Navigate to dashboard or next step
     console.log("Starting savings plan...");
     router.push("dashboard");
+  };
+
+  const handleCustomizePlan = () => {
+    console.log("Customizing plan...");
+    router.push("customize-plan");
   };
 
   const handleBack = () => {
@@ -152,6 +163,13 @@ export default function AnalysisResults() {
               Based on your target and income, here&apos;s your personalized savings
               strategy
             </p>
+            {/* ICP Rate Display */}
+            <div className="mt-4 flex items-center justify-center space-x-2">
+              <span className="text-white/40 text-sm">
+                1 ICP = ${icpToUsd} USD
+              </span>
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            </div>
           </motion.div>
 
           {/* Target Summary */}
@@ -178,7 +196,10 @@ export default function AnalysisResults() {
                       className="text-white/60 mx-auto mb-2"
                     />
                     <p className="text-white/60 text-sm mb-1">Monthly Income</p>
-                    <p className="text-white text-xl font-semibold">$5,000</p>
+                    <p className="text-white text-xl font-semibold">
+                      401.61 ICP
+                    </p>
+                    <p className="text-white/50 text-sm">≈ $5,000 USD</p>
                   </div>
                   <div>
                     <PieChart
@@ -186,7 +207,10 @@ export default function AnalysisResults() {
                       className="text-white/60 mx-auto mb-2"
                     />
                     <p className="text-white/60 text-sm mb-1">Estimated Cost</p>
-                    <p className="text-white text-xl font-semibold">$12,000</p>
+                    <p className="text-white text-xl font-semibold">
+                      963.86 ICP
+                    </p>
+                    <p className="text-white/50 text-sm">≈ $12,000 USD</p>
                   </div>
                 </div>
               </div>
@@ -233,6 +257,11 @@ export default function AnalysisResults() {
                       {rec.description}
                     </p>
                     <p className="text-white text-xl font-bold">{rec.amount}</p>
+                    {rec.amountUsd && (
+                      <p className="text-white/50 text-sm mt-1">
+                        {rec.amountUsd}
+                      </p>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -283,13 +312,26 @@ export default function AnalysisResults() {
             <ShimmerButton
               className="px-8 py-4 text-lg font-medium"
               onClick={handleStartPlan}
-              background="#ffff"
-              shimmerColor="#0a0a0a"
+              background="#ffffff"
+              shimmerColor="#000000"
               shimmerSize="0.05em"
             >
               <div className="flex items-center space-x-3">
                 <CheckCircle size={20} className="text-black" />
                 <span className="text-black">Start Savings Plan</span>
+              </div>
+            </ShimmerButton>
+
+            <ShimmerButton
+              className="px-8 py-4 text-lg font-medium"
+              onClick={handleCustomizePlan}
+              background="#1f2937"
+              shimmerColor="#ffffff"
+              shimmerSize="0.05em"
+            >
+              <div className="flex items-center space-x-3">
+                <Settings size={20} className="text-white" />
+                <span className="text-white">Customize Plan</span>
               </div>
             </ShimmerButton>
           </motion.div>

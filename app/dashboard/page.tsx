@@ -25,6 +25,9 @@ export default function Dashboard() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [showBalance, setShowBalance] = useState(true);
 
+  // Mock ICP to USD conversion rate (this would come from an API in real app)
+  const icpToUsd = 12.45; // Example rate: 1 ICP = $12.45 USD
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
@@ -34,14 +37,14 @@ export default function Dashboard() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // Mock data for savings plans
+  // Mock data for savings plans (converted to ICP)
   const savingsPlans = [
     {
       id: 1,
       title: "Dream Vacation to Japan",
-      target: 12000,
-      current: 2400,
-      monthlyTarget: 750,
+      target: 964, // ~$12,000 in ICP
+      current: 193, // ~$2,400 in ICP
+      monthlyTarget: 60, // ~$750 in ICP
       targetDate: "Feb 2026",
       icon: Plane,
       color: "from-blue-500/20 to-cyan-500/20",
@@ -50,9 +53,9 @@ export default function Dashboard() {
     {
       id: 2,
       title: "New Car Fund",
-      target: 25000,
-      current: 8750,
-      monthlyTarget: 1200,
+      target: 2008, // ~$25,000 in ICP
+      current: 703, // ~$8,750 in ICP
+      monthlyTarget: 96, // ~$1,200 in ICP
       targetDate: "Dec 2025",
       icon: Car,
       color: "from-green-500/20 to-emerald-500/20",
@@ -61,9 +64,9 @@ export default function Dashboard() {
     {
       id: 3,
       title: "Emergency Fund",
-      target: 15000,
-      current: 12000,
-      monthlyTarget: 500,
+      target: 1205, // ~$15,000 in ICP
+      current: 964, // ~$12,000 in ICP
+      monthlyTarget: 40, // ~$500 in ICP
       targetDate: "Aug 2024",
       icon: Home,
       color: "from-purple-500/20 to-pink-500/20",
@@ -72,9 +75,9 @@ export default function Dashboard() {
     {
       id: 4,
       title: "Education Fund",
-      target: 30000,
-      current: 4500,
-      monthlyTarget: 800,
+      target: 2410, // ~$30,000 in ICP
+      current: 361, // ~$4,500 in ICP
+      monthlyTarget: 64, // ~$800 in ICP
       targetDate: "Sep 2027",
       icon: GraduationCap,
       color: "from-orange-500/20 to-red-500/20",
@@ -92,13 +95,26 @@ export default function Dashboard() {
     0
   );
 
+  const formatICP = (amount: number) => {
+    return amount.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const formatUSD = (icpAmount: number) => {
+    return (icpAmount * icpToUsd).toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+  };
+
   const handleCreateNew = () => {
     router.push("input-target");
   };
 
   const handleViewPlan = (planId: number) => {
     console.log(`Viewing plan ${planId}`);
-    // Navigate to individual plan view
     router.push("details");
   };
 
@@ -148,12 +164,19 @@ export default function Dashboard() {
                 <p className="text-white/60 text-lg font-light">
                   Track your progress toward financial freedom
                 </p>
+                {/* ICP Rate Display */}
+                <div className="mt-2 flex items-center space-x-2">
+                  <span className="text-white/40 text-sm">
+                    1 ICP = ${icpToUsd} USD
+                  </span>
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                </div>
               </div>
               <div className="mt-6 md:mt-0">
                 <ShimmerButton
                   className="px-6 py-3 text-lg font-medium"
                   onClick={handleCreateNew}
-                  background="#ffff"
+                  background="#ffffff"
                   shimmerColor="#0a0a0a"
                   shimmerSize="0.05em"
                 >
@@ -196,9 +219,14 @@ export default function Dashboard() {
                     </div>
                     <p className="text-white text-3xl font-bold">
                       {showBalance
-                        ? `$${totalBalance.toLocaleString()}`
+                        ? `${formatICP(totalBalance)} ICP`
                         : "••••••"}
                     </p>
+                    {showBalance && (
+                      <p className="text-white/50 text-sm mt-1">
+                        ≈ ${formatUSD(totalBalance)} USD
+                      </p>
+                    )}
                   </div>
 
                   <div className="bg-white/5 rounded-xl p-6 border border-white/10">
@@ -207,10 +235,13 @@ export default function Dashboard() {
                       <p className="text-white/60 text-sm">Total Goals</p>
                     </div>
                     <p className="text-white text-3xl font-bold">
-                      {showBalance
-                        ? `$${totalTarget.toLocaleString()}`
-                        : "••••••"}
+                      {showBalance ? `${formatICP(totalTarget)} ICP` : "••••••"}
                     </p>
+                    {showBalance && (
+                      <p className="text-white/50 text-sm mt-1">
+                        ≈ ${formatUSD(totalTarget)} USD
+                      </p>
+                    )}
                   </div>
 
                   <div className="bg-white/5 rounded-xl p-6 border border-white/10">
@@ -220,9 +251,14 @@ export default function Dashboard() {
                     </div>
                     <p className="text-white text-3xl font-bold">
                       {showBalance
-                        ? `$${totalMonthly.toLocaleString()}`
+                        ? `${formatICP(totalMonthly)} ICP`
                         : "••••••"}
                     </p>
+                    {showBalance && (
+                      <p className="text-white/50 text-sm mt-1">
+                        ≈ ${formatUSD(totalMonthly)} USD
+                      </p>
+                    )}
                   </div>
 
                   <div className="bg-white/5 rounded-xl p-6 border border-white/10">
@@ -296,12 +332,26 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <button
+                        <ShimmerButton
+                          className="px-4 py-2 text-sm"
                           onClick={() => handleViewPlan(plan.id)}
-                          className="text-white/60 hover:text-white transition-colors duration-300"
+                          background="#ffffff"
+                          shimmerColor="#000000"
+                          shimmerSize="0.1em"
                         >
-                          <Eye size={20} />
-                        </button>
+                          <span className="text-black">Details</span>
+                        </ShimmerButton>
+                        <ShimmerButton
+                          className="px-4 py-2 text-sm"
+                          onClick={() =>
+                            router.push(`/customize-plan/${plan.id}`)
+                          }
+                          background="#1f2937"
+                          shimmerColor="#ffffff"
+                          shimmerSize="0.1em"
+                        >
+                          <span className="text-white">Customize</span>
+                        </ShimmerButton>
                         <button className="text-white/60 hover:text-white transition-colors duration-300">
                           <MoreHorizontal size={20} />
                         </button>
@@ -311,10 +361,16 @@ export default function Dashboard() {
                     {/* Progress Section */}
                     <div className="mb-4">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-white/60 text-sm">
-                          ${plan.current.toLocaleString()} of $
-                          {plan.target.toLocaleString()}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-white/60 text-sm">
+                            {formatICP(plan.current)} ICP of{" "}
+                            {formatICP(plan.target)} ICP
+                          </span>
+                          <span className="text-white/40 text-xs">
+                            ≈ ${formatUSD(plan.current)} of $
+                            {formatUSD(plan.target)} USD
+                          </span>
+                        </div>
                         <span className="text-white font-medium">
                           {plan.progress}%
                         </span>
@@ -340,13 +396,19 @@ export default function Dashboard() {
                           Monthly Target
                         </p>
                         <p className="text-white font-semibold">
-                          ${plan.monthlyTarget}
+                          {formatICP(plan.monthlyTarget)} ICP
+                        </p>
+                        <p className="text-white/40 text-xs">
+                          ≈ ${formatUSD(plan.monthlyTarget)} USD
                         </p>
                       </div>
                       <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                         <p className="text-white/60 text-xs mb-1">Remaining</p>
                         <p className="text-white font-semibold">
-                          ${(plan.target - plan.current).toLocaleString()}
+                          {formatICP(plan.target - plan.current)} ICP
+                        </p>
+                        <p className="text-white/40 text-xs">
+                          ≈ ${formatUSD(plan.target - plan.current)} USD
                         </p>
                       </div>
                     </div>

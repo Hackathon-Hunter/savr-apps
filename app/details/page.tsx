@@ -27,6 +27,9 @@ export default function SavingsPlanDetails() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [errors, setErrors] = useState("");
 
+  // Mock ICP to USD conversion rate (this would come from an API in real app)
+  const icpToUsd = 12.45; // Example rate: 1 ICP = $12.45 USD
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
@@ -43,16 +46,30 @@ export default function SavingsPlanDetails() {
     };
   }, []);
 
-  // Simulated data
+  // Simulated data (converted to ICP)
   const savingsGoal = {
     target: "Dream Vacation to Japan",
-    totalAmount: 12000,
-    currentSaved: 2400,
-    monthlyTarget: 750,
+    totalAmount: 963.86, // ~$12,000 in ICP
+    currentSaved: 192.77, // ~$2,400 in ICP
+    monthlyTarget: 60.24, // ~$750 in ICP
     timelineMonths: 18,
-    nextMilestone: "First $1,000 saved",
+    nextMilestone: "First 80.32 ICP saved", // ~$1,000
     startDate: new Date().toLocaleDateString(),
     targetDate: "February 2026",
+  };
+
+  const formatICP = (amount: number) => {
+    return amount.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const formatUSD = (icpAmount: number) => {
+    return (icpAmount * icpToUsd).toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
   };
 
   const handleBack = () => {
@@ -72,8 +89,9 @@ export default function SavingsPlanDetails() {
       setErrors("Please enter a valid amount");
       return false;
     }
-    if (Number(topUpAmount) > 10000) {
-      setErrors("Maximum transfer amount is $10,000");
+    if (Number(topUpAmount) > 803.21) {
+      // ~$10,000 in ICP
+      setErrors("Maximum transfer amount is 803.21 ICP");
       return false;
     }
     setErrors("");
@@ -88,7 +106,7 @@ export default function SavingsPlanDetails() {
 
   const handleFinalConfirm = () => {
     // Simulate transfer
-    console.log(`Transferring $${topUpAmount} to savings`);
+    console.log(`Transferring ${topUpAmount} ICP to savings`);
     setShowConfirmation(false);
     setTopUpAmount("");
     // Here you would update the savings amount
@@ -218,6 +236,13 @@ export default function SavingsPlanDetails() {
             <p className="text-white/60 text-lg font-light tracking-wide max-w-2xl mx-auto">
               Track your progress and manage your savings
             </p>
+            {/* ICP Rate Display */}
+            <div className="mt-4 flex items-center justify-center space-x-2">
+              <span className="text-white/40 text-sm">
+                1 ICP = ${icpToUsd} USD
+              </span>
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            </div>
           </motion.div>
 
           {/* Dashboard Header */}
@@ -245,7 +270,10 @@ export default function SavingsPlanDetails() {
                     />
                     <p className="text-white/60 text-sm mb-1">Goal Amount</p>
                     <p className="text-white text-xl font-semibold">
-                      ${savingsGoal.totalAmount.toLocaleString()}
+                      {formatICP(savingsGoal.totalAmount)} ICP
+                    </p>
+                    <p className="text-white/50 text-sm">
+                      ≈ ${formatUSD(savingsGoal.totalAmount)} USD
                     </p>
                   </div>
                   <div>
@@ -267,7 +295,10 @@ export default function SavingsPlanDetails() {
                       Monthly Savings
                     </p>
                     <p className="text-white text-xl font-semibold">
-                      ${savingsGoal.monthlyTarget}
+                      {formatICP(savingsGoal.monthlyTarget)} ICP
+                    </p>
+                    <p className="text-white/50 text-sm">
+                      ≈ ${formatUSD(savingsGoal.monthlyTarget)} USD
                     </p>
                   </div>
                 </div>
@@ -292,13 +323,13 @@ export default function SavingsPlanDetails() {
                 <div className="mb-8">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-white/60 text-sm">
-                      ${savingsGoal.currentSaved.toLocaleString()}
+                      {formatICP(savingsGoal.currentSaved)} ICP
                     </span>
                     <span className="text-white font-medium">
                       {progressPercentage}%
                     </span>
                     <span className="text-white/60 text-sm">
-                      ${savingsGoal.totalAmount.toLocaleString()}
+                      {formatICP(savingsGoal.totalAmount)} ICP
                     </span>
                   </div>
                   <div className="h-3 bg-white/10 rounded-full overflow-hidden">
@@ -318,16 +349,26 @@ export default function SavingsPlanDetails() {
                       Current Savings
                     </p>
                     <p className="text-white text-2xl font-bold">
-                      ${savingsGoal.currentSaved.toLocaleString()}
+                      {formatICP(savingsGoal.currentSaved)} ICP
+                    </p>
+                    <p className="text-white/50 text-xs mt-1">
+                      ≈ ${formatUSD(savingsGoal.currentSaved)} USD
                     </p>
                   </div>
                   <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                     <p className="text-white/60 text-xs mb-1">Remaining</p>
                     <p className="text-white text-2xl font-bold">
-                      $
-                      {(
+                      {formatICP(
                         savingsGoal.totalAmount - savingsGoal.currentSaved
-                      ).toLocaleString()}
+                      )}{" "}
+                      ICP
+                    </p>
+                    <p className="text-white/50 text-xs mt-1">
+                      ≈ $
+                      {formatUSD(
+                        savingsGoal.totalAmount - savingsGoal.currentSaved
+                      )}{" "}
+                      USD
                     </p>
                   </div>
                   <div className="bg-white/5 rounded-xl p-4 border border-white/10">
@@ -371,13 +412,13 @@ export default function SavingsPlanDetails() {
                 <ShimmerButton
                   className="px-8 py-4 text-lg font-medium mx-auto"
                   onClick={handleTopUp}
-                  background="#ffff"
-                  shimmerColor="#0a0a0a"
-                  shimmerSize="0.05em"
+                  background="#1f2937"
+                  shimmerColor="#ffffff"
+                  shimmerSize="0.15em"
                 >
                   <div className="flex items-center space-x-3">
-                    <Plus size={20} className="text-black" />
-                    <span className="text-black">Top Up Saving</span>
+                    <Plus size={20} className="text-white" />
+                    <span className="text-white">Add Money</span>
                   </div>
                 </ShimmerButton>
               </div>
@@ -437,41 +478,43 @@ export default function SavingsPlanDetails() {
 
               <div className="mb-6">
                 <label className="block text-white/80 text-sm font-medium mb-3">
-                  Amount to Transfer
+                  Amount to Transfer (ICP)
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/60">
-                    $
-                  </span>
                   <input
                     type="number"
+                    step="0.01"
                     value={topUpAmount}
                     onChange={(e) => setTopUpAmount(e.target.value)}
-                    placeholder="100"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all duration-300"
+                    placeholder="8.04"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all duration-300"
                   />
                 </div>
+                {topUpAmount && (
+                  <p className="text-white/40 text-sm mt-2">
+                    ≈ ${formatUSD(Number(topUpAmount))} USD
+                  </p>
+                )}
                 {errors && (
                   <p className="text-red-400 text-sm mt-2">{errors}</p>
                 )}
               </div>
 
               <div className="flex space-x-4">
-                <ShimmerButton
-                  shimmerSize="0em"
+                <button
                   onClick={handleCancel}
                   className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 text-white/80 hover:bg-white/10 transition-all duration-300"
                 >
                   Cancel
-                </ShimmerButton>
+                </button>
                 <ShimmerButton
                   className="flex-1 py-3"
                   onClick={handleConfirmTopUp}
-                  background="#ffff"
-                  shimmerColor="#0a0a0a"
-                  shimmerSize="0.05em"
+                  background="rgba(255, 255, 255, 0.1)"
+                  shimmerColor="#ffffff"
+                  shimmerSize="0.1em"
                 >
-                  <span className="text-black">Continue</span>
+                  <span className="text-white">Continue</span>
                 </ShimmerButton>
               </div>
             </motion.div>
@@ -502,28 +545,31 @@ export default function SavingsPlanDetails() {
                 <p className="text-white/70">
                   Transfer{" "}
                   <span className="text-white font-semibold">
-                    ${topUpAmount}
+                    {topUpAmount} ICP
                   </span>{" "}
                   to your savings plan?
+                  <br />
+                  <span className="text-white/50 text-sm">
+                    ≈ ${formatUSD(Number(topUpAmount))} USD
+                  </span>
                 </p>
               </div>
 
               <div className="flex space-x-4">
-                <ShimmerButton
-                  shimmerSize="0em"
+                <button
                   onClick={handleCancel}
                   className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 text-white/80 hover:bg-white/10 transition-all duration-300"
                 >
                   Cancel
-                </ShimmerButton>
+                </button>
                 <ShimmerButton
                   className="flex-1 py-3"
                   onClick={handleFinalConfirm}
-                  background="#ffff"
-                  shimmerColor="#0a0a0a"
-                  shimmerSize="0.05em"
+                  background="rgba(255, 255, 255, 0.1)"
+                  shimmerColor="#ffffff"
+                  shimmerSize="0.1em"
                 >
-                  <span className="text-black">Confirm</span>
+                  <span className="text-white">Confirm</span>
                 </ShimmerButton>
               </div>
             </motion.div>
