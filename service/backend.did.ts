@@ -11,10 +11,10 @@ export interface Saving {
   deadline: bigint;
   updatedAt: bigint;
   priorityLevel: bigint;
-  currentAmount: bigint;
-  amount: bigint;
+  currentAmount: bigint; // IDL.Nat64 -> bigint
+  amount: bigint; // IDL.Nat64 -> bigint
   principalId: Principal;
-  totalSaving: bigint;
+  totalSaving: bigint; // IDL.Nat64 -> bigint
   savingsRate: bigint;
 }
 export type SavingId = bigint;
@@ -34,10 +34,10 @@ export interface SavingWithHistory {
   deadline: bigint;
   updatedAt: bigint;
   priorityLevel: bigint;
-  currentAmount: bigint;
-  amount: bigint;
+  currentAmount: bigint; // IDL.Nat64 -> bigint
+  amount: bigint; // IDL.Nat64 -> bigint
   principalId: Principal;
-  totalSaving: bigint;
+  totalSaving: bigint; // IDL.Nat64 -> bigint
   savingsRate: bigint;
 }
 export interface Saving__1 {
@@ -49,10 +49,10 @@ export interface Saving__1 {
   deadline: bigint;
   updatedAt: bigint;
   priorityLevel: bigint;
-  currentAmount: bigint;
-  amount: bigint;
+  currentAmount: bigint; // IDL.Nat64 -> bigint
+  amount: bigint; // IDL.Nat64 -> bigint
   principalId: Principal;
-  totalSaving: bigint;
+  totalSaving: bigint; // IDL.Nat64 -> bigint
   savingsRate: bigint;
 }
 export interface StartSavingRequest {
@@ -60,18 +60,18 @@ export interface StartSavingRequest {
   savingName: string;
   deadline: bigint;
   priorityLevel: [] | [bigint];
-  amount: bigint;
+  amount: bigint; // IDL.Nat64 -> bigint
   principalId: string;
-  totalSaving: bigint;
+  totalSaving: bigint; // IDL.Nat64 -> bigint
   savingsRate: [] | [bigint];
 }
 export interface TopUpHistory {
   date: bigint;
-  amount: bigint;
+  amount: bigint; // IDL.Nat64 -> bigint
 }
 export interface TopUpRequest {
   savingId: SavingId;
-  amount: bigint;
+  amount: bigint; // IDL.Nat64 -> bigint
   principalId: string;
 }
 export interface Transaction {
@@ -82,9 +82,9 @@ export interface Transaction {
   from: Principal;
   memo: [] | [string];
   savingId: [] | [SavingId];
-  blockIndex: [] | [bigint];
+  blockIndex: [] | [bigint]; // IDL.Nat64 -> bigint
   timestamp: bigint;
-  amount: bigint;
+  amount: bigint; // IDL.Nat64 -> bigint
 }
 export type TransactionId = bigint;
 export type TransactionResponse = { Ok: Transaction } | { Err: string };
@@ -101,9 +101,9 @@ export interface Transaction__1 {
   from: Principal;
   memo: [] | [string];
   savingId: [] | [SavingId];
-  blockIndex: [] | [bigint];
+  blockIndex: [] | [bigint]; // IDL.Nat64 -> bigint
   timestamp: bigint;
-  amount: bigint;
+  amount: bigint; // IDL.Nat64 -> bigint
 }
 export interface UpdateSavingRequest {
   isStaking: [] | [boolean];
@@ -111,7 +111,7 @@ export interface UpdateSavingRequest {
   savingId: SavingId;
   deadline: [] | [bigint];
   priorityLevel: [] | [bigint];
-  totalSaving: [] | [bigint];
+  totalSaving: [] | [bigint]; // IDL.Nat64 -> bigint
   savingsRate: [] | [bigint];
 }
 export interface _SERVICE {
@@ -130,33 +130,6 @@ export interface _SERVICE {
 }
 
 export const idlFactory: IDL.InterfaceFactory = ({ IDL }) => {
-  const SavingId = IDL.Nat;
-  const SavingStatus = IDL.Variant({
-    Active: IDL.Null,
-    Cancelled: IDL.Null,
-    Completed: IDL.Null,
-  });
-  const TopUpHistory = IDL.Record({
-    date: IDL.Int,
-    amount: IDL.Nat,
-  });
-  const SavingWithHistory = IDL.Record({
-    id: SavingId,
-    status: SavingStatus,
-    topUpHistory: IDL.Vec(TopUpHistory),
-    isStaking: IDL.Bool,
-    savingName: IDL.Text,
-    createdAt: IDL.Int,
-    deadline: IDL.Int,
-    updatedAt: IDL.Int,
-    priorityLevel: IDL.Nat,
-    currentAmount: IDL.Nat,
-    amount: IDL.Nat,
-    principalId: IDL.Principal,
-    totalSaving: IDL.Nat,
-    savingsRate: IDL.Nat,
-  });
-  const SavingId__1 = SavingId;
   const TransactionId = IDL.Nat;
   const TransactionStatus = IDL.Variant({
     Failed: IDL.Text,
@@ -167,6 +140,7 @@ export const idlFactory: IDL.InterfaceFactory = ({ IDL }) => {
     Saving: IDL.Null,
     TopUp: IDL.Null,
   });
+  const SavingId = IDL.Nat;
   const Transaction__1 = IDL.Record({
     id: TransactionId,
     to: IDL.Principal,
@@ -175,9 +149,32 @@ export const idlFactory: IDL.InterfaceFactory = ({ IDL }) => {
     from: IDL.Principal,
     memo: IDL.Opt(IDL.Text),
     savingId: IDL.Opt(SavingId),
-    blockIndex: IDL.Opt(IDL.Nat),
+    blockIndex: IDL.Opt(IDL.Nat64),
     timestamp: IDL.Int,
-    amount: IDL.Nat,
+    amount: IDL.Nat64,
+  });
+  const SavingId__1 = IDL.Nat;
+  const SavingStatus = IDL.Variant({
+    Active: IDL.Null,
+    Cancelled: IDL.Null,
+    Completed: IDL.Null,
+  });
+  const TopUpHistory = IDL.Record({ date: IDL.Int, amount: IDL.Nat64 });
+  const SavingWithHistory = IDL.Record({
+    id: SavingId,
+    status: SavingStatus,
+    topUpHistory: IDL.Vec(TopUpHistory),
+    isStaking: IDL.Bool,
+    savingName: IDL.Text,
+    createdAt: IDL.Int,
+    deadline: IDL.Int,
+    updatedAt: IDL.Int,
+    priorityLevel: IDL.Nat,
+    currentAmount: IDL.Nat64,
+    amount: IDL.Nat64,
+    principalId: IDL.Principal,
+    totalSaving: IDL.Nat64,
+    savingsRate: IDL.Nat,
   });
   const Saving__1 = IDL.Record({
     id: SavingId,
@@ -188,10 +185,10 @@ export const idlFactory: IDL.InterfaceFactory = ({ IDL }) => {
     deadline: IDL.Int,
     updatedAt: IDL.Int,
     priorityLevel: IDL.Nat,
-    currentAmount: IDL.Nat,
-    amount: IDL.Nat,
+    currentAmount: IDL.Nat64,
+    amount: IDL.Nat64,
     principalId: IDL.Principal,
-    totalSaving: IDL.Nat,
+    totalSaving: IDL.Nat64,
     savingsRate: IDL.Nat,
   });
   const StartSavingRequest = IDL.Record({
@@ -199,9 +196,9 @@ export const idlFactory: IDL.InterfaceFactory = ({ IDL }) => {
     savingName: IDL.Text,
     deadline: IDL.Int,
     priorityLevel: IDL.Opt(IDL.Nat),
-    amount: IDL.Nat,
+    amount: IDL.Nat64,
     principalId: IDL.Text,
-    totalSaving: IDL.Nat,
+    totalSaving: IDL.Nat64,
     savingsRate: IDL.Opt(IDL.Nat),
   });
   const Saving = IDL.Record({
@@ -213,16 +210,16 @@ export const idlFactory: IDL.InterfaceFactory = ({ IDL }) => {
     deadline: IDL.Int,
     updatedAt: IDL.Int,
     priorityLevel: IDL.Nat,
-    currentAmount: IDL.Nat,
-    amount: IDL.Nat,
+    currentAmount: IDL.Nat64,
+    amount: IDL.Nat64,
     principalId: IDL.Principal,
-    totalSaving: IDL.Nat,
+    totalSaving: IDL.Nat64,
     savingsRate: IDL.Nat,
   });
   const SavingResponse = IDL.Variant({ Ok: Saving, Err: IDL.Text });
   const TopUpRequest = IDL.Record({
     savingId: SavingId,
-    amount: IDL.Nat,
+    amount: IDL.Nat64,
     principalId: IDL.Text,
   });
   const Transaction = IDL.Record({
@@ -233,9 +230,9 @@ export const idlFactory: IDL.InterfaceFactory = ({ IDL }) => {
     from: IDL.Principal,
     memo: IDL.Opt(IDL.Text),
     savingId: IDL.Opt(SavingId),
-    blockIndex: IDL.Opt(IDL.Nat),
+    blockIndex: IDL.Opt(IDL.Nat64),
     timestamp: IDL.Int,
-    amount: IDL.Nat,
+    amount: IDL.Nat64,
   });
   const TransactionResponse = IDL.Variant({
     Ok: Transaction,
@@ -247,7 +244,7 @@ export const idlFactory: IDL.InterfaceFactory = ({ IDL }) => {
     savingId: SavingId,
     deadline: IDL.Opt(IDL.Int),
     priorityLevel: IDL.Opt(IDL.Nat),
-    totalSaving: IDL.Opt(IDL.Nat),
+    totalSaving: IDL.Opt(IDL.Nat64),
     savingsRate: IDL.Opt(IDL.Nat),
   });
   return IDL.Service({

@@ -1,27 +1,52 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Brain,
   Target,
   Calendar,
   TrendingUp,
+  TrendingDown,
   DollarSign,
   CheckCircle,
   Lightbulb,
   PieChart,
   ArrowLeft,
   Settings,
+  AlertCircle,
+  Loader,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
+import { useAuth } from "@/hooks/useAuth";
+import { useICPPrice } from "@/contexts/ICPPriceContext";
+import { startSaving } from "@/service/icService";
+import { StartSavingRequest } from "@/service/backend.did";
 
 export default function AnalysisResults() {
   const router = useRouter();
+  const { actor, isAuthenticated, principal } = useAuth();
+  const { formatUSD, formatICP } = useICPPrice();
 
-  // Mock ICP to USD conversion rate (this would come from an API in real app)
-  const icpToUsd = 12.45; // Example rate: 1 ICP = $12.45 USD
+  // Loading and error states
+  const [isCreatingSaving, setIsCreatingSaving] = useState(false);
+  const [createError, setCreateError] = useState<string>("");
+  const [createSuccess, setCreateSuccess] = useState(false);
+
+  // Get real-time ICP price from context
+  const { priceData } = useICPPrice();
+
+  // Mock analysis data - in a real app, this would come from localStorage, URL params, or API
+  const analysisData = {
+    target: "Dream Vacation to Japan",
+    monthlyIncome: 401.61, // ~$5,000 in ICP
+    targetAmount: 963.86, // ~$12,000 in ICP
+    monthlySavings: 60.24, // ~$750 in ICP (15% of income)
+    timeline: 18,
+    savingsRate: 15,
+  };
 
   const recommendations = [
     {
@@ -57,9 +82,80 @@ export default function AnalysisResults() {
     "Look for additional income streams to accelerate timeline",
   ];
 
-  const handleStartPlan = () => {
-    console.log("Starting savings plan...");
-    router.push("dashboard");
+  const handleStartPlan = async () => {
+    if (!actor || !isAuthenticated || !principal) {
+      setCreateError("Please connect your wallet first");
+      return;
+    }
+
+    setIsCreatingSaving(true);
+    setCreateError("");
+    setCreateSuccess(false);
+
+    try {
+      // Use simpler timestamp calculation to avoid overflow
+      const now = Date.now();
+      const monthsInMs = analysisData.timeline * 30 * 24 * 60 * 60 * 1000;
+      const deadlineMs = now + monthsInMs;
+
+      // Convert to nanoseconds (IC timestamp format)
+      // Use smaller multiplier to avoid BigInt overflow issues
+      const deadlineNs =
+        BigInt(Math.floor(deadlineMs / 1000)) * BigInt(1000000000);
+
+      // Convert ICP amounts to e8s with careful precision handling
+      const targetE8s = BigInt(
+        Math.floor(analysisData.targetAmount * 100000000)
+      );
+
+      // Prepare the request with minimal required fields first
+      const startSavingRequest: StartSavingRequest = {
+        savingName: analysisData.target,
+        principalId: principal,
+        amount: targetE8s,
+        totalSaving: BigInt(0),
+        deadline: deadlineNs,
+        priorityLevel: [],
+        savingsRate: [],
+        isStaking: [],
+      };
+
+      console.log("Creating saving plan with minimal request:", {
+        savingName: startSavingRequest.savingName,
+        principalId: startSavingRequest.principalId,
+        amount: startSavingRequest.amount.toString(),
+        totalSaving: startSavingRequest.totalSaving.toString(),
+        deadline: startSavingRequest.deadline.toString(),
+        deadlineDate: new Date(
+          Number(startSavingRequest.deadline / BigInt(1000000))
+        ).toISOString(),
+      });
+
+      // Call the IC backend
+      const result = await startSaving(actor, startSavingRequest);
+
+      if ("Ok" in result) {
+        console.log("Saving plan created successfully:", result.Ok);
+        setCreateSuccess(true);
+
+        // Redirect to dashboard after a short delay
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 2000);
+      } else {
+        console.error("Failed to create saving plan:", result.Err);
+        setCreateError(result.Err);
+      }
+    } catch (error) {
+      console.error("Error creating saving plan:", error);
+      setCreateError(
+        error instanceof Error
+          ? error.message
+          : "Failed to create saving plan. Please try again."
+      );
+    } finally {
+      setIsCreatingSaving(false);
+    }
   };
 
   const handleCustomizePlan = () => {
@@ -140,17 +236,85 @@ export default function AnalysisResults() {
               AI Analysis Complete
             </h1>
             <p className="text-white/60 text-lg font-light tracking-wide max-w-2xl mx-auto">
-              Based on your target and income, here&apos;s your personalized savings
-              strategy
+              Based on your target and income, here&apos;s your personalized
+              savings strategy
             </p>
             {/* ICP Rate Display */}
             <div className="mt-4 flex items-center justify-center space-x-2">
-              <span className="text-white/40 text-sm">
-                1 ICP = ${icpToUsd} USD
-              </span>
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              {priceData.error ? (
+                <div className="flex items-center space-x-2 text-red-400">
+                  <AlertCircle size={14} />
+                  <span className="text-sm">Price unavailable</span>
+                </div>
+              ) : priceData.isLoading && priceData.price === 0 ? (
+                <div className="animate-pulse">
+                  <div className="h-4 bg-white/10 rounded w-32"></div>
+                </div>
+              ) : (
+                <>
+                  <span className="text-white/40 text-sm">
+                    1 ICP = ${priceData.price.toFixed(2)} USD
+                  </span>
+                  <div
+                    className={`flex items-center space-x-1 text-xs ${
+                      priceData.changePercent24h >= 0
+                        ? "text-green-400"
+                        : "text-red-400"
+                    }`}
+                  >
+                    {priceData.changePercent24h >= 0 ? (
+                      <TrendingUp size={12} />
+                    ) : (
+                      <TrendingDown size={12} />
+                    )}
+                    <span>
+                      {Math.abs(priceData.changePercent24h).toFixed(2)}%
+                    </span>
+                  </div>
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                </>
+              )}
             </div>
           </motion.div>
+
+          {/* Success Message */}
+          {createSuccess && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-8"
+            >
+              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-6 text-center">
+                <CheckCircle
+                  size={32}
+                  className="text-green-400 mx-auto mb-3"
+                />
+                <h3 className="text-green-400 text-xl font-semibold mb-2">
+                  Saving Plan Created Successfully!
+                </h3>
+                <p className="text-green-400/70">
+                  Redirecting to your dashboard...
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Error Message */}
+          {createError && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-8"
+            >
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
+                <AlertCircle size={32} className="text-red-400 mx-auto mb-3" />
+                <h3 className="text-red-400 text-xl font-semibold mb-2">
+                  Failed to Create Saving Plan
+                </h3>
+                <p className="text-red-400/70 text-sm">{createError}</p>
+              </div>
+            </motion.div>
+          )}
 
           {/* Target Summary */}
           <motion.div
@@ -167,7 +331,7 @@ export default function AnalysisResults() {
                     <Target size={24} className="text-white/60 mx-auto mb-2" />
                     <p className="text-white/60 text-sm mb-1">Your Target</p>
                     <p className="text-white text-xl font-semibold">
-                      Dream Vacation to Japan
+                      {analysisData.target}
                     </p>
                   </div>
                   <div>
@@ -177,9 +341,11 @@ export default function AnalysisResults() {
                     />
                     <p className="text-white/60 text-sm mb-1">Monthly Income</p>
                     <p className="text-white text-xl font-semibold">
-                      401.61 ICP
+                      {formatICP(analysisData.monthlyIncome)} ICP
                     </p>
-                    <p className="text-white/50 text-sm">≈ $5,000 USD</p>
+                    <p className="text-white/50 text-sm">
+                      ≈ ${formatUSD(analysisData.monthlyIncome)} USD
+                    </p>
                   </div>
                   <div>
                     <PieChart
@@ -188,9 +354,11 @@ export default function AnalysisResults() {
                     />
                     <p className="text-white/60 text-sm mb-1">Estimated Cost</p>
                     <p className="text-white text-xl font-semibold">
-                      963.86 ICP
+                      {formatICP(analysisData.targetAmount)} ICP
                     </p>
-                    <p className="text-white/50 text-sm">≈ $12,000 USD</p>
+                    <p className="text-white/50 text-sm">
+                      ≈ ${formatUSD(analysisData.targetAmount)} USD
+                    </p>
                   </div>
                 </div>
               </div>
@@ -282,6 +450,39 @@ export default function AnalysisResults() {
             </div>
           </motion.div>
 
+          {/* Authentication Check */}
+          {!isAuthenticated && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1.2 }}
+              className="mb-8"
+            >
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-6 text-center">
+                <AlertCircle
+                  size={32}
+                  className="text-yellow-400 mx-auto mb-3"
+                />
+                <h3 className="text-yellow-400 text-xl font-semibold mb-2">
+                  Connect Your Wallet
+                </h3>
+                <p className="text-yellow-400/70 mb-4">
+                  Please connect your Internet Identity wallet to create your
+                  saving plan
+                </p>
+                <ShimmerButton
+                  className="px-6 py-3 text-lg font-medium"
+                  onClick={() => router.push("/connect-wallet")}
+                  background="#ffffff"
+                  shimmerColor="#000000"
+                  shimmerSize="0.05em"
+                >
+                  <span className="text-black">Connect Wallet</span>
+                </ShimmerButton>
+              </div>
+            </motion.div>
+          )}
+
           {/* Action Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -292,28 +493,44 @@ export default function AnalysisResults() {
             <ShimmerButton
               className="px-8 py-4 text-lg font-medium"
               onClick={handleStartPlan}
+              disabled={isCreatingSaving || createSuccess || !isAuthenticated}
               background="#ffffff"
               shimmerColor="#000000"
               shimmerSize="0.05em"
             >
               <div className="flex items-center space-x-3">
-                <CheckCircle size={20} className="text-black" />
-                <span className="text-black">Start Savings Plan</span>
+                {isCreatingSaving ? (
+                  <Loader size={20} className="text-black animate-spin" />
+                ) : createSuccess ? (
+                  <CheckCircle size={20} className="text-black" />
+                ) : (
+                  <CheckCircle size={20} className="text-black" />
+                )}
+                <span className="text-black">
+                  {isCreatingSaving
+                    ? "Creating Plan..."
+                    : createSuccess
+                    ? "Plan Created!"
+                    : "Start Savings Plan"}
+                </span>
               </div>
             </ShimmerButton>
 
-            <ShimmerButton
-              className="px-8 py-4 text-lg font-medium"
-              onClick={handleCustomizePlan}
-              background="#1f2937"
-              shimmerColor="#ffffff"
-              shimmerSize="0.05em"
-            >
-              <div className="flex items-center space-x-3">
-                <Settings size={20} className="text-white" />
-                <span className="text-white">Customize Plan</span>
-              </div>
-            </ShimmerButton>
+            {!createSuccess && (
+              <ShimmerButton
+                className="px-8 py-4 text-lg font-medium"
+                onClick={handleCustomizePlan}
+                disabled={isCreatingSaving}
+                background="#1f2937"
+                shimmerColor="#ffffff"
+                shimmerSize="0.05em"
+              >
+                <div className="flex items-center space-x-3">
+                  <Settings size={20} className="text-white" />
+                  <span className="text-white">Customize Plan</span>
+                </div>
+              </ShimmerButton>
+            )}
           </motion.div>
 
           {/* Bottom Decorative Element */}
