@@ -13,56 +13,180 @@ import {
   ArrowLeft,
   X,
   ChevronRight,
+  AlertCircle,
+  RefreshCw,
+  Loader,
+  TrendingDown,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
+import { useAuth } from "@/hooks/useAuth";
+import { useICPPrice } from "@/contexts/ICPPriceContext";
+import { getUserSavings } from "@/service/icService";
+
+// Icon mapping for different saving types
+const getSavingIcon = (savingName: string) => {
+  const name = savingName.toLowerCase();
+  if (
+    name.includes("vacation") ||
+    name.includes("travel") ||
+    name.includes("trip")
+  )
+    return "✈️";
+  if (name.includes("car") || name.includes("vehicle")) return "🚗";
+  if (
+    name.includes("emergency") ||
+    name.includes("home") ||
+    name.includes("house")
+  )
+    return "🏠";
+  if (
+    name.includes("education") ||
+    name.includes("school") ||
+    name.includes("study")
+  )
+    return "🎓";
+  return "🎯"; // Default icon
+};
+
+interface SavingPlanDetails {
+  id: number;
+  target: string;
+  totalAmount: number;
+  currentSaved: number;
+  monthlyTarget: number;
+  timelineMonths: number;
+  nextMilestone: string;
+  startDate: string;
+  targetDate: string;
+  isStaking: boolean;
+  status: string;
+  priorityLevel: number;
+  savingsRate: number;
+  icon: string;
+}
 
 export default function SavingsPlanDetails() {
   const router = useRouter();
-  const [showConfetti, setShowConfetti] = useState(true);
+  const searchParams = useSearchParams();
+  const { actor, isAuthenticated, principal } = useAuth();
+  const { priceData, formatUSD, formatICP } = useICPPrice();
+
+  // State management
+  const [savingPlan, setSavingPlan] = useState<SavingPlanDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string>("");
+  const [showConfetti, setShowConfetti] = useState(false);
   const [showTopUpModal, setShowTopUpModal] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("");
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [errors, setErrors] = useState("");
+  const [topUpErrors, setTopUpErrors] = useState("");
+  const [isProcessingTopUp, setIsProcessingTopUp] = useState(false);
 
-  // Mock ICP to USD conversion rate (this would come from an API in real app)
-  const icpToUsd = 12.45; // Example rate: 1 ICP = $12.45 USD
+  // Get saving ID from URL params or use default
+  const savingId = searchParams.get("id") || "1";
 
+  // Fetch saving plan details
   useEffect(() => {
-    // Hide confetti after a few seconds
-    const timer = setTimeout(() => setShowConfetti(false), 5000);
+    const fetchSavingDetails = async () => {
+      if (!actor || !isAuthenticated || !principal) return;
 
-    return () => {
-      clearTimeout(timer);
+      setIsLoading(true);
+      setError("");
+
+      try {
+        // Fetch user savings
+        const userSavingsData = await getUserSavings(actor, principal);
+
+        // Find the specific saving plan
+        const targetSaving = userSavingsData.find(
+          (saving) => Number(saving.id) === Number(savingId)
+        );
+
+        if (!targetSaving) {
+          setError("Saving plan not found");
+          return;
+        }
+
+        // Convert backend data to frontend format
+        const targetAmount = Number(targetSaving.totalSaving) / 100000000;
+        const currentAmount = Number(targetSaving.currentAmount) / 100000000;
+        const monthlyTarget = Number(targetSaving.amount) / 100000000;
+
+        // Calculate timeline
+        const deadlineDate = new Date(Number(targetSaving.deadline) / 1000000);
+        const createdDate = new Date(Number(targetSaving.createdAt) / 1000000);
+        const totalMonths = Math.ceil(
+          (deadlineDate.getTime() - createdDate.getTime()) /
+            (1000 * 60 * 60 * 24 * 30)
+        );
+        const elapsedMonths = Math.ceil(
+          (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
+        );
+        const remainingMonths = Math.max(0, totalMonths - elapsedMonths);
+
+        // Calculate next milestone (25% increments)
+        const progressPercent =
+          targetAmount > 0 ? (currentAmount / targetAmount) * 100 : 0;
+        let nextMilestonePercent = 25;
+        if (progressPercent >= 75) nextMilestonePercent = 100;
+        else if (progressPercent >= 50) nextMilestonePercent = 75;
+        else if (progressPercent >= 25) nextMilestonePercent = 50;
+
+        const nextMilestoneAmount = (targetAmount * nextMilestonePercent) / 100;
+
+        // Map status
+        let status = "Active";
+        if ("Completed" in targetSaving.status) status = "Completed";
+        if ("Cancelled" in targetSaving.status) status = "Cancelled";
+
+        const planDetails: SavingPlanDetails = {
+          id: Number(targetSaving.id),
+          target: targetSaving.savingName,
+          totalAmount: targetAmount,
+          currentSaved: currentAmount,
+          monthlyTarget: monthlyTarget,
+          timelineMonths: remainingMonths,
+          nextMilestone: `${nextMilestonePercent}% milestone (${formatICP(
+            nextMilestoneAmount
+          )} ICP)`,
+          startDate: createdDate.toLocaleDateString(),
+          targetDate: deadlineDate.toLocaleDateString("en-US", {
+            month: "long",
+            year: "numeric",
+          }),
+          isStaking: targetSaving.isStaking,
+          status: status,
+          priorityLevel: Number(targetSaving.priorityLevel),
+          savingsRate: Number(targetSaving.savingsRate),
+          icon: getSavingIcon(targetSaving.savingName),
+        };
+
+        setSavingPlan(planDetails);
+
+        // Show confetti for recently completed plans
+        if (status === "Completed" && progressPercent >= 95) {
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 5000);
+        }
+      } catch (error) {
+        console.error("Failed to fetch saving details:", error);
+        setError("Failed to load saving plan details. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
     };
-  }, []);
 
-  // Simulated data (converted to ICP)
-  const savingsGoal = {
-    target: "Dream Vacation to Japan",
-    totalAmount: 963.86, // ~$12,000 in ICP
-    currentSaved: 192.77, // ~$2,400 in ICP
-    monthlyTarget: 60.24, // ~$750 in ICP
-    timelineMonths: 18,
-    nextMilestone: "First 80.32 ICP saved", // ~$1,000
-    startDate: new Date().toLocaleDateString(),
-    targetDate: "February 2026",
-  };
+    fetchSavingDetails();
+  }, [actor, isAuthenticated, principal, savingId, formatICP]);
 
-  const formatICP = (amount: number) => {
-    return amount.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  };
-
-  const formatUSD = (icpAmount: number) => {
-    return (icpAmount * icpToUsd).toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
-  };
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated && !isLoading) {
+      router.push("/connect-wallet");
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   const handleBack = () => {
     router.push("/dashboard");
@@ -74,19 +198,18 @@ export default function SavingsPlanDetails() {
 
   const validateAmount = () => {
     if (!topUpAmount.trim()) {
-      setErrors("Please enter an amount");
+      setTopUpErrors("Please enter an amount");
       return false;
     }
     if (isNaN(Number(topUpAmount)) || Number(topUpAmount) <= 0) {
-      setErrors("Please enter a valid amount");
+      setTopUpErrors("Please enter a valid amount");
       return false;
     }
-    if (Number(topUpAmount) > 803.21) {
-      // ~$10,000 in ICP
-      setErrors("Maximum transfer amount is 803.21 ICP");
+    if (Number(topUpAmount) > 1000) {
+      setTopUpErrors("Maximum transfer amount is 1000 ICP");
       return false;
     }
-    setErrors("");
+    setTopUpErrors("");
     return true;
   };
 
@@ -96,23 +219,134 @@ export default function SavingsPlanDetails() {
     setShowConfirmation(true);
   };
 
-  const handleFinalConfirm = () => {
-    // Simulate transfer
-    console.log(`Transferring ${topUpAmount} ICP to savings`);
-    setShowConfirmation(false);
-    setTopUpAmount("");
-    // Here you would update the savings amount
+  const handleFinalConfirm = async () => {
+    if (!savingPlan) return;
+
+    setIsProcessingTopUp(true);
+    try {
+      // Here you would implement the actual top-up logic
+      // For now, we'll simulate it
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      console.log(
+        `Transferring ${topUpAmount} ICP to saving plan ${savingPlan.id}`
+      );
+
+      // Update the saving plan with new amount
+      const newCurrentSaved = savingPlan.currentSaved + Number(topUpAmount);
+      setSavingPlan({
+        ...savingPlan,
+        currentSaved: newCurrentSaved,
+      });
+
+      setShowConfirmation(false);
+      setTopUpAmount("");
+
+      // Show success message or confetti if goal is reached
+      if (newCurrentSaved >= savingPlan.totalAmount) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 5000);
+      }
+    } catch (error) {
+      console.error("Failed to process top-up:", error);
+      setTopUpErrors("Failed to process top-up. Please try again.");
+    } finally {
+      setIsProcessingTopUp(false);
+    }
   };
 
   const handleCancel = () => {
     setShowTopUpModal(false);
     setShowConfirmation(false);
     setTopUpAmount("");
-    setErrors("");
+    setTopUpErrors("");
   };
 
-  const progressPercentage = Math.round(
-    (savingsGoal.currentSaved / savingsGoal.totalAmount) * 100
+  const refreshData = async () => {
+    if (!actor || !isAuthenticated || !principal) return;
+
+    setIsLoading(true);
+    try {
+      const userSavingsData = await getUserSavings(actor, principal);
+      const targetSaving = userSavingsData.find(
+        (saving) => Number(saving.id) === Number(savingId)
+      );
+
+      if (targetSaving) {
+        const targetAmount = Number(targetSaving.totalSaving) / 100000000;
+        const currentAmount = Number(targetSaving.currentAmount) / 100000000;
+
+        setSavingPlan((prev) =>
+          prev
+            ? {
+                ...prev,
+                currentSaved: currentAmount,
+                totalAmount: targetAmount,
+              }
+            : null
+        );
+      }
+    } catch (error) {
+      console.error("Failed to refresh data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="relative min-h-screen w-screen overflow-hidden bg-black flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
+        <div className="text-center">
+          <Loader size={32} className="text-white animate-spin mx-auto mb-4" />
+          <p className="text-white/60">Loading saving plan details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !savingPlan) {
+    return (
+      <div className="relative min-h-screen w-screen overflow-hidden bg-black flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
+        <div className="text-center max-w-md mx-auto p-6">
+          <AlertCircle size={48} className="text-red-400 mx-auto mb-4" />
+          <h2 className="text-white text-xl font-semibold mb-2">
+            Failed to Load Saving Plan
+          </h2>
+          <p className="text-white/60 mb-6">
+            {error || "Saving plan not found"}
+          </p>
+          <div className="flex gap-4 justify-center">
+            <ShimmerButton
+              className="px-6 py-3"
+              onClick={handleBack}
+              background="#1f2937"
+              shimmerColor="#ffffff"
+              shimmerSize="0.05em"
+            >
+              <span className="text-white">Back to Dashboard</span>
+            </ShimmerButton>
+            <ShimmerButton
+              className="px-6 py-3"
+              onClick={() => window.location.reload()}
+              background="#ffffff"
+              shimmerColor="#000000"
+              shimmerSize="0.05em"
+            >
+              <span className="text-black">Retry</span>
+            </ShimmerButton>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const progressPercentage = Math.min(
+    Math.round((savingPlan.currentSaved / savingPlan.totalAmount) * 100),
+    100
   );
 
   return (
@@ -155,6 +389,26 @@ export default function SavingsPlanDetails() {
           <ChevronRight size={16} className="text-white/40" />
           <span className="text-sm text-white/60">Savings Plan Details</span>
         </div>
+      </motion.div>
+
+      {/* Refresh Button */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="absolute top-8 right-8 z-20"
+      >
+        <button
+          onClick={refreshData}
+          disabled={isLoading}
+          className="flex items-center space-x-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl p-3 hover:border-white/20 hover:bg-black/20 transition-all duration-300 disabled:opacity-50"
+        >
+          <RefreshCw
+            size={16}
+            className={`text-white ${isLoading ? "animate-spin" : ""}`}
+          />
+          <span className="text-white text-sm">Refresh</span>
+        </button>
       </motion.div>
 
       {/* Confetti Animation */}
@@ -211,20 +465,67 @@ export default function SavingsPlanDetails() {
               transition={{ duration: 0.5, type: "spring" }}
               className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-xl border border-white/20 mx-auto mb-6"
             >
-              <Target size={40} className="text-white" />
+              <span className="text-4xl">{savingPlan.icon}</span>
             </motion.div>
             <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-              {savingsGoal.target}
+              {savingPlan.target}
             </h1>
             <p className="text-white/60 text-lg font-light tracking-wide max-w-2xl mx-auto">
               Track your progress and manage your savings
             </p>
+
+            {/* Status Badge */}
+            <div className="mt-4 flex items-center justify-center space-x-4">
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  savingPlan.status === "Active"
+                    ? "bg-blue-500/20 border border-blue-500/30 text-blue-400"
+                    : savingPlan.status === "Completed"
+                    ? "bg-green-500/20 border border-green-500/30 text-green-400"
+                    : "bg-red-500/20 border border-red-500/30 text-red-400"
+                }`}
+              >
+                {savingPlan.status}
+              </span>
+
+              {savingPlan.isStaking && (
+                <span className="bg-green-500/20 border border-green-500/30 text-green-400 text-sm px-3 py-1 rounded-full">
+                  Staking Active
+                </span>
+              )}
+            </div>
+
             {/* ICP Rate Display */}
             <div className="mt-4 flex items-center justify-center space-x-2">
-              <span className="text-white/40 text-sm">
-                1 ICP = ${icpToUsd} USD
-              </span>
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              {priceData.error ? (
+                <div className="flex items-center space-x-2 text-red-400">
+                  <AlertCircle size={14} />
+                  <span className="text-sm">Price unavailable</span>
+                </div>
+              ) : (
+                <>
+                  <span className="text-white/40 text-sm">
+                    1 ICP = ${priceData.price.toFixed(2)} USD
+                  </span>
+                  <div
+                    className={`flex items-center space-x-1 text-xs ${
+                      priceData.changePercent24h >= 0
+                        ? "text-green-400"
+                        : "text-red-400"
+                    }`}
+                  >
+                    {priceData.changePercent24h >= 0 ? (
+                      <TrendingUp size={12} />
+                    ) : (
+                      <TrendingDown size={12} />
+                    )}
+                    <span>
+                      {Math.abs(priceData.changePercent24h).toFixed(2)}%
+                    </span>
+                  </div>
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                </>
+              )}
             </div>
           </motion.div>
 
@@ -243,7 +544,7 @@ export default function SavingsPlanDetails() {
                     <Target size={24} className="text-white/60 mx-auto mb-2" />
                     <p className="text-white/60 text-sm mb-1">Target</p>
                     <p className="text-white text-xl font-semibold">
-                      {savingsGoal.target}
+                      {savingPlan.target}
                     </p>
                   </div>
                   <div>
@@ -253,10 +554,10 @@ export default function SavingsPlanDetails() {
                     />
                     <p className="text-white/60 text-sm mb-1">Goal Amount</p>
                     <p className="text-white text-xl font-semibold">
-                      {formatICP(savingsGoal.totalAmount)} ICP
+                      {formatICP(savingPlan.totalAmount)} ICP
                     </p>
                     <p className="text-white/50 text-sm">
-                      ≈ ${formatUSD(savingsGoal.totalAmount)} USD
+                      ≈ ${formatUSD(savingPlan.totalAmount)} USD
                     </p>
                   </div>
                   <div>
@@ -266,7 +567,7 @@ export default function SavingsPlanDetails() {
                     />
                     <p className="text-white/60 text-sm mb-1">Target Date</p>
                     <p className="text-white text-xl font-semibold">
-                      {savingsGoal.targetDate}
+                      {savingPlan.targetDate}
                     </p>
                   </div>
                   <div>
@@ -278,10 +579,10 @@ export default function SavingsPlanDetails() {
                       Monthly Savings
                     </p>
                     <p className="text-white text-xl font-semibold">
-                      {formatICP(savingsGoal.monthlyTarget)} ICP
+                      {formatICP(savingPlan.monthlyTarget)} ICP
                     </p>
                     <p className="text-white/50 text-sm">
-                      ≈ ${formatUSD(savingsGoal.monthlyTarget)} USD
+                      ≈ ${formatUSD(savingPlan.monthlyTarget)} USD
                     </p>
                   </div>
                 </div>
@@ -306,13 +607,13 @@ export default function SavingsPlanDetails() {
                 <div className="mb-8">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-white/60 text-sm">
-                      {formatICP(savingsGoal.currentSaved)} ICP
+                      {formatICP(savingPlan.currentSaved)} ICP
                     </span>
                     <span className="text-white font-medium">
                       {progressPercentage}%
                     </span>
                     <span className="text-white/60 text-sm">
-                      {formatICP(savingsGoal.totalAmount)} ICP
+                      {formatICP(savingPlan.totalAmount)} ICP
                     </span>
                   </div>
                   <div className="h-3 bg-white/10 rounded-full overflow-hidden">
@@ -332,24 +633,30 @@ export default function SavingsPlanDetails() {
                       Current Savings
                     </p>
                     <p className="text-white text-2xl font-bold">
-                      {formatICP(savingsGoal.currentSaved)} ICP
+                      {formatICP(savingPlan.currentSaved)} ICP
                     </p>
                     <p className="text-white/50 text-xs mt-1">
-                      ≈ ${formatUSD(savingsGoal.currentSaved)} USD
+                      ≈ ${formatUSD(savingPlan.currentSaved)} USD
                     </p>
                   </div>
                   <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                     <p className="text-white/60 text-xs mb-1">Remaining</p>
                     <p className="text-white text-2xl font-bold">
                       {formatICP(
-                        savingsGoal.totalAmount - savingsGoal.currentSaved
+                        Math.max(
+                          0,
+                          savingPlan.totalAmount - savingPlan.currentSaved
+                        )
                       )}{" "}
                       ICP
                     </p>
                     <p className="text-white/50 text-xs mt-1">
                       ≈ $
                       {formatUSD(
-                        savingsGoal.totalAmount - savingsGoal.currentSaved
+                        Math.max(
+                          0,
+                          savingPlan.totalAmount - savingPlan.currentSaved
+                        )
                       )}{" "}
                       USD
                     </p>
@@ -357,13 +664,13 @@ export default function SavingsPlanDetails() {
                   <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                     <p className="text-white/60 text-xs mb-1">Next Milestone</p>
                     <p className="text-white text-lg font-medium">
-                      {savingsGoal.nextMilestone}
+                      {savingPlan.nextMilestone}
                     </p>
                   </div>
                   <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                     <p className="text-white/60 text-xs mb-1">Time Remaining</p>
                     <p className="text-white text-lg font-medium">
-                      {savingsGoal.timelineMonths} months
+                      {savingPlan.timelineMonths} months
                     </p>
                   </div>
                 </div>
@@ -371,42 +678,44 @@ export default function SavingsPlanDetails() {
             </div>
           </motion.div>
 
-          {/* Top Up Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="mb-12"
-          >
-            <h2 className="text-2xl font-bold text-white mb-8 text-center">
-              Add to Savings
-            </h2>
-            <div className="relative group">
-              <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-50" />
-              <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
-                <Plus size={32} className="text-white/80 mx-auto mb-4" />
-                <h3 className="text-white text-xl font-semibold mb-2">
-                  Top Up Your Savings
-                </h3>
-                <p className="text-white/70 max-w-2xl mx-auto mb-8">
-                  Add money to your savings plan anytime to reach your goal
-                  faster
-                </p>
-                <ShimmerButton
-                  className="px-8 py-4 text-lg font-medium mx-auto"
-                  onClick={handleTopUp}
-                  background="#1f2937"
-                  shimmerColor="#ffffff"
-                  shimmerSize="0.15em"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Plus size={20} className="text-white" />
-                    <span className="text-white">Add Money</span>
-                  </div>
-                </ShimmerButton>
+          {/* Top Up Section - Only show for active plans */}
+          {savingPlan.status === "Active" && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+              className="mb-12"
+            >
+              <h2 className="text-2xl font-bold text-white mb-8 text-center">
+                Add to Savings
+              </h2>
+              <div className="relative group">
+                <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-50" />
+                <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
+                  <Plus size={32} className="text-white/80 mx-auto mb-4" />
+                  <h3 className="text-white text-xl font-semibold mb-2">
+                    Top Up Your Savings
+                  </h3>
+                  <p className="text-white/70 max-w-2xl mx-auto mb-8">
+                    Add money to your savings plan anytime to reach your goal
+                    faster
+                  </p>
+                  <ShimmerButton
+                    className="px-8 py-4 text-lg font-medium mx-auto"
+                    onClick={handleTopUp}
+                    background="#1f2937"
+                    shimmerColor="#ffffff"
+                    shimmerSize="0.15em"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Plus size={20} className="text-white" />
+                      <span className="text-white">Add Money</span>
+                    </div>
+                  </ShimmerButton>
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          )}
 
           {/* Motivation Card */}
           <motion.div
@@ -420,13 +729,25 @@ export default function SavingsPlanDetails() {
               <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
                 <Award size={32} className="text-white/80 mx-auto mb-4" />
                 <h3 className="text-white text-xl font-semibold mb-2">
-                  Keep Going!
+                  {progressPercentage >= 100
+                    ? "Congratulations!"
+                    : "Keep Going!"}
                 </h3>
                 <p className="text-white/70 max-w-2xl mx-auto">
-                  You&apos;re {progressPercentage}% of the way to your dream
-                  vacation. Every contribution brings you closer to experiencing
-                  Japan!
+                  {progressPercentage >= 100
+                    ? `You've successfully reached your ${savingPlan.target} goal! 🎉`
+                    : `You're ${progressPercentage}% of the way to your ${savingPlan.target}. Every contribution brings you closer to your dream!`}
                 </p>
+                {savingPlan.isStaking && (
+                  <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <div className="flex items-center justify-center space-x-2">
+                      <TrendingUp size={16} className="text-green-400" />
+                      <span className="text-green-400 text-sm font-medium">
+                        Your savings are earning ICP staking rewards (8.5% APY)
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
@@ -478,8 +799,8 @@ export default function SavingsPlanDetails() {
                     ≈ ${formatUSD(Number(topUpAmount))} USD
                   </p>
                 )}
-                {errors && (
-                  <p className="text-red-400 text-sm mt-2">{errors}</p>
+                {topUpErrors && (
+                  <p className="text-red-400 text-sm mt-2">{topUpErrors}</p>
                 )}
               </div>
 
@@ -521,40 +842,55 @@ export default function SavingsPlanDetails() {
               className="relative bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl p-8 w-full max-w-md"
             >
               <div className="text-center mb-6">
-                <CheckCircle size={48} className="text-white mx-auto mb-4" />
+                {isProcessingTopUp ? (
+                  <Loader
+                    size={48}
+                    className="text-white mx-auto mb-4 animate-spin"
+                  />
+                ) : (
+                  <CheckCircle size={48} className="text-white mx-auto mb-4" />
+                )}
                 <h3 className="text-white text-2xl font-bold mb-2">
-                  Confirm Transfer
+                  {isProcessingTopUp ? "Processing..." : "Confirm Transfer"}
                 </h3>
                 <p className="text-white/70">
-                  Transfer{" "}
-                  <span className="text-white font-semibold">
-                    {topUpAmount} ICP
-                  </span>{" "}
-                  to your savings plan?
-                  <br />
-                  <span className="text-white/50 text-sm">
-                    ≈ ${formatUSD(Number(topUpAmount))} USD
-                  </span>
+                  {isProcessingTopUp ? (
+                    "Processing your transfer..."
+                  ) : (
+                    <>
+                      Transfer{" "}
+                      <span className="text-white font-semibold">
+                        {topUpAmount} ICP
+                      </span>{" "}
+                      to your savings plan?
+                      <br />
+                      <span className="text-white/50 text-sm">
+                        ≈ ${formatUSD(Number(topUpAmount))} USD
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
 
-              <div className="flex space-x-4">
-                <button
-                  onClick={handleCancel}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 text-white/80 hover:bg-white/10 transition-all duration-300"
-                >
-                  Cancel
-                </button>
-                <ShimmerButton
-                  className="flex-1 py-3"
-                  onClick={handleFinalConfirm}
-                  background="rgba(255, 255, 255, 0.1)"
-                  shimmerColor="#ffffff"
-                  shimmerSize="0.1em"
-                >
-                  <span className="text-white">Confirm</span>
-                </ShimmerButton>
-              </div>
+              {!isProcessingTopUp && (
+                <div className="flex space-x-4">
+                  <button
+                    onClick={handleCancel}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 text-white/80 hover:bg-white/10 transition-all duration-300"
+                  >
+                    Cancel
+                  </button>
+                  <ShimmerButton
+                    className="flex-1 py-3"
+                    onClick={handleFinalConfirm}
+                    background="rgba(255, 255, 255, 0.1)"
+                    shimmerColor="#ffffff"
+                    shimmerSize="0.1em"
+                  >
+                    <span className="text-white">Confirm</span>
+                  </ShimmerButton>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
