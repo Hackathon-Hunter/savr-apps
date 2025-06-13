@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Brain,
@@ -20,6 +20,7 @@ import {
 import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
+import { useSavingsAnalysis } from "@/contexts/SavingsAnalysisContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useICPPrice } from "@/contexts/ICPPriceContext";
 import { startSaving } from "@/service/icService";
@@ -27,60 +28,43 @@ import { StartSavingRequest } from "@/service/backend.did";
 
 export default function AnalysisResults() {
   const router = useRouter();
+  const { analysisData, userInput, icpToUsdRate } = useSavingsAnalysis();
   const { actor, isAuthenticated, principal } = useAuth();
-  const { formatUSD, formatICP } = useICPPrice();
+  const { formatUSD, formatICP, priceData } = useICPPrice();
 
   // Loading and error states
   const [isCreatingSaving, setIsCreatingSaving] = useState(false);
   const [createError, setCreateError] = useState<string>("");
   const [createSuccess, setCreateSuccess] = useState(false);
 
-  // Get real-time ICP price from context
-  const { priceData } = useICPPrice();
+  // Redirect if no analysis data
+  useEffect(() => {
+    if (!analysisData || !userInput) {
+      router.push('/input-target');
+    }
+  }, [analysisData, userInput, router]);
 
-  // Mock analysis data - in a real app, this would come from localStorage, URL params, or API
-  const analysisData = {
-    target: "Dream Vacation to Japan",
-    monthlyIncome: 401.61, // ~$5,000 in ICP
-    targetAmount: 963.86, // ~$12,000 in ICP
-    monthlySavings: 60.24, // ~$750 in ICP (15% of income)
-    timeline: 18,
-    savingsRate: 15,
+  // Show loading if no data yet
+  if (!analysisData || !userInput) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-xl">Loading analysis...</div>
+      </div>
+    );
+  }
+
+  const iconMap: { [key: string]: React.ComponentType<{ size?: number; className?: string }> } = {
+    TrendingUp,
+    Calendar,
+    CheckCircle,
   };
 
-  const recommendations = [
-    {
-      title: "Optimal Savings Rate",
-      description: "Save 15% of your monthly income",
-      amount: "60.24 ICP/month",
-      amountUsd: "≈ $750/month",
-      icon: TrendingUp,
-      priority: "high",
-    },
-    {
-      title: "Timeline Prediction",
-      description: "Reach your goal in 18 months",
-      amount: "Feb 2026",
-      amountUsd: "",
-      icon: Calendar,
-      priority: "medium",
-    },
-    {
-      title: "Emergency Buffer",
-      description: "Build 3-month emergency fund first",
-      amount: "361.45 ICP",
-      amountUsd: "≈ $4,500",
-      icon: CheckCircle,
-      priority: "high",
-    },
-  ];
+  const recommendations = analysisData.recommendations.map((rec) => ({
+    ...rec,
+    icon: iconMap[rec.icon] || TrendingUp,
+  }));
 
-  const insights = [
-    "Your income allows for aggressive saving while maintaining lifestyle",
-    "Consider automating transfers to avoid spending temptation",
-    "Track progress monthly to stay motivated and adjust if needed",
-    "Look for additional income streams to accelerate timeline",
-  ];
+  const insights = analysisData.insights;
 
   const handleStartPlan = async () => {
     if (!actor || !isAuthenticated || !principal) {
@@ -95,22 +79,18 @@ export default function AnalysisResults() {
     try {
       // Use simpler timestamp calculation to avoid overflow
       const now = Date.now();
-      const monthsInMs = analysisData.timeline * 30 * 24 * 60 * 60 * 1000;
+      const monthsInMs = analysisData.timeline.months * 30 * 24 * 60 * 60 * 1000;
       const deadlineMs = now + monthsInMs;
 
       // Convert to nanoseconds (IC timestamp format)
-      // Use smaller multiplier to avoid BigInt overflow issues
-      const deadlineNs =
-        BigInt(Math.floor(deadlineMs / 1000)) * BigInt(1000000000);
+      const deadlineNs = BigInt(Math.floor(deadlineMs / 1000)) * BigInt(1000000000);
 
       // Convert ICP amounts to e8s with careful precision handling
-      const targetE8s = BigInt(
-        Math.floor(analysisData.targetAmount * 100000000)
-      );
+      const targetE8s = BigInt(Math.floor(analysisData.estimatedCost.icp * 100000000));
 
-      // Prepare the request with minimal required fields first
+      // Prepare the request
       const startSavingRequest: StartSavingRequest = {
-        savingName: analysisData.target,
+        savingName: userInput.target,
         principalId: principal,
         amount: targetE8s,
         totalSaving: BigInt(0),
@@ -120,15 +100,11 @@ export default function AnalysisResults() {
         isStaking: [],
       };
 
-      console.log("Creating saving plan with minimal request:", {
+      console.log("Creating saving plan:", {
         savingName: startSavingRequest.savingName,
         principalId: startSavingRequest.principalId,
         amount: startSavingRequest.amount.toString(),
-        totalSaving: startSavingRequest.totalSaving.toString(),
         deadline: startSavingRequest.deadline.toString(),
-        deadlineDate: new Date(
-          Number(startSavingRequest.deadline / BigInt(1000000))
-        ).toISOString(),
       });
 
       // Call the IC backend
@@ -236,8 +212,8 @@ export default function AnalysisResults() {
               AI Analysis Complete
             </h1>
             <p className="text-white/60 text-lg font-light tracking-wide max-w-2xl mx-auto">
-              Based on your target and income, here&apos;s your personalized
-              savings strategy
+              Based on your target and income, here&apos;s your personalized savings
+              strategy
             </p>
             {/* ICP Rate Display */}
             <div className="mt-4 flex items-center justify-center space-x-2">
@@ -277,45 +253,6 @@ export default function AnalysisResults() {
             </div>
           </motion.div>
 
-          {/* Success Message */}
-          {createSuccess && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="mb-8"
-            >
-              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-6 text-center">
-                <CheckCircle
-                  size={32}
-                  className="text-green-400 mx-auto mb-3"
-                />
-                <h3 className="text-green-400 text-xl font-semibold mb-2">
-                  Saving Plan Created Successfully!
-                </h3>
-                <p className="text-green-400/70">
-                  Redirecting to your dashboard...
-                </p>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Error Message */}
-          {createError && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="mb-8"
-            >
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
-                <AlertCircle size={32} className="text-red-400 mx-auto mb-3" />
-                <h3 className="text-red-400 text-xl font-semibold mb-2">
-                  Failed to Create Saving Plan
-                </h3>
-                <p className="text-red-400/70 text-sm">{createError}</p>
-              </div>
-            </motion.div>
-          )}
-
           {/* Target Summary */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -331,7 +268,7 @@ export default function AnalysisResults() {
                     <Target size={24} className="text-white/60 mx-auto mb-2" />
                     <p className="text-white/60 text-sm mb-1">Your Target</p>
                     <p className="text-white text-xl font-semibold">
-                      {analysisData.target}
+                      {userInput.target}
                     </p>
                   </div>
                   <div>
@@ -341,10 +278,10 @@ export default function AnalysisResults() {
                     />
                     <p className="text-white/60 text-sm mb-1">Monthly Income</p>
                     <p className="text-white text-xl font-semibold">
-                      {formatICP(analysisData.monthlyIncome)} ICP
+                      {formatICP((userInput.monthlyIncome / icpToUsdRate))} ICP
                     </p>
                     <p className="text-white/50 text-sm">
-                      ≈ ${formatUSD(analysisData.monthlyIncome)} USD
+                      ≈ ${formatUSD((userInput.monthlyIncome / icpToUsdRate))} USD
                     </p>
                   </div>
                   <div>
@@ -354,10 +291,10 @@ export default function AnalysisResults() {
                     />
                     <p className="text-white/60 text-sm mb-1">Estimated Cost</p>
                     <p className="text-white text-xl font-semibold">
-                      {formatICP(analysisData.targetAmount)} ICP
+                      {formatICP(analysisData.estimatedCost.icp)} ICP
                     </p>
                     <p className="text-white/50 text-sm">
-                      ≈ ${formatUSD(analysisData.targetAmount)} USD
+                      ≈ ${formatUSD(analysisData.estimatedCost.icp)} USD
                     </p>
                   </div>
                 </div>
@@ -450,36 +387,26 @@ export default function AnalysisResults() {
             </div>
           </motion.div>
 
-          {/* Authentication Check */}
-          {!isAuthenticated && (
+          {/* Success/Error Messages */}
+          {createSuccess && (
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1.2 }}
-              className="mb-8"
+              className="mb-6 bg-green-500/20 border border-green-500/30 rounded-xl p-4 text-center"
             >
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-6 text-center">
-                <AlertCircle
-                  size={32}
-                  className="text-yellow-400 mx-auto mb-3"
-                />
-                <h3 className="text-yellow-400 text-xl font-semibold mb-2">
-                  Connect Your Wallet
-                </h3>
-                <p className="text-yellow-400/70 mb-4">
-                  Please connect your Internet Identity wallet to create your
-                  saving plan
-                </p>
-                <ShimmerButton
-                  className="px-6 py-3 text-lg font-medium"
-                  onClick={() => router.push("/connect-wallet")}
-                  background="#ffffff"
-                  shimmerColor="#000000"
-                  shimmerSize="0.05em"
-                >
-                  <span className="text-black">Connect Wallet</span>
-                </ShimmerButton>
-              </div>
+              <p className="text-green-400 font-medium">
+                🎉 Saving plan created successfully! Redirecting to dashboard...
+              </p>
+            </motion.div>
+          )}
+
+          {createError && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 bg-red-500/20 border border-red-500/30 rounded-xl p-4 text-center"
+            >
+              <p className="text-red-400 font-medium">{createError}</p>
             </motion.div>
           )}
 
@@ -493,7 +420,7 @@ export default function AnalysisResults() {
             <ShimmerButton
               className="px-8 py-4 text-lg font-medium"
               onClick={handleStartPlan}
-              disabled={isCreatingSaving || createSuccess || !isAuthenticated}
+              disabled={isCreatingSaving}
               background="#ffffff"
               shimmerColor="#000000"
               shimmerSize="0.05em"
@@ -501,36 +428,27 @@ export default function AnalysisResults() {
               <div className="flex items-center space-x-3">
                 {isCreatingSaving ? (
                   <Loader size={20} className="text-black animate-spin" />
-                ) : createSuccess ? (
-                  <CheckCircle size={20} className="text-black" />
                 ) : (
                   <CheckCircle size={20} className="text-black" />
                 )}
                 <span className="text-black">
-                  {isCreatingSaving
-                    ? "Creating Plan..."
-                    : createSuccess
-                    ? "Plan Created!"
-                    : "Start Savings Plan"}
+                  {isCreatingSaving ? "Creating..." : "Start Savings Plan"}
                 </span>
               </div>
             </ShimmerButton>
 
-            {!createSuccess && (
-              <ShimmerButton
-                className="px-8 py-4 text-lg font-medium"
-                onClick={handleCustomizePlan}
-                disabled={isCreatingSaving}
-                background="#1f2937"
-                shimmerColor="#ffffff"
-                shimmerSize="0.05em"
-              >
-                <div className="flex items-center space-x-3">
-                  <Settings size={20} className="text-white" />
-                  <span className="text-white">Customize Plan</span>
-                </div>
-              </ShimmerButton>
-            )}
+            <ShimmerButton
+              className="px-8 py-4 text-lg font-medium"
+              onClick={handleCustomizePlan}
+              background="#1f2937"
+              shimmerColor="#ffffff"
+              shimmerSize="0.05em"
+            >
+              <div className="flex items-center space-x-3">
+                <Settings size={20} className="text-white" />
+                <span className="text-white">Customize Plan</span>
+              </div>
+            </ShimmerButton>
           </motion.div>
 
           {/* Bottom Decorative Element */}

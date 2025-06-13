@@ -6,9 +6,11 @@ import { Target, DollarSign, Brain, Sparkles, ArrowLeft, ChevronRight } from "lu
 import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
+import { useSavingsAnalysis } from "@/contexts/SavingsAnalysisContext";
 
 export default function InputTarget() {
   const router = useRouter();
+  const { setAnalysisData, setUserInput, icpToUsdRate } = useSavingsAnalysis();
   const [target, setTarget] = useState("");
   const [monthlyIncome, setMonthlyIncome] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -39,11 +41,43 @@ export default function InputTarget() {
     if (!validateForm()) return;
 
     setIsAnalyzing(true);
-    // Simulate AI analysis
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    setIsAnalyzing(false);
+    
+    try {
+      // Store user input
+      const monthlyIncomeUsd = Number(monthlyIncome);
+      setUserInput({
+        target,
+        monthlyIncome: monthlyIncomeUsd,
+      });
 
-    router.push("analysis-results");
+      // Get AI analysis from ChatGPT via API
+      const response = await fetch('/api/analyze-savings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          target,
+          monthlyIncome: monthlyIncomeUsd,
+          icpToUsdRate,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze savings goal');
+      }
+
+      const analysis = await response.json();
+      setAnalysisData(analysis);
+
+      setIsAnalyzing(false);
+      router.push("analysis-results");
+    } catch (error) {
+      console.error("Error during analysis:", error);
+      setIsAnalyzing(false);
+      // You could show an error message to the user here
+      alert("Sorry, there was an error analyzing your savings goal. Please try again.");
+    }
   };
 
   const handleBack = () => {
