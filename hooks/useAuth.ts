@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { AuthClient } from "@dfinity/auth-client";
 import { Actor, ActorSubclass, HttpAgent } from "@dfinity/agent";
-import { _SERVICE } from "@dfinity/ledger-icp";
-import { idlFactory } from "@/service/backend.did";
+import { _SERVICE, idlFactory } from "@/service/backend.did";
 
 const identityProvider = "https://identity.ic0.app";
 const canisterId = "3ykjv-vqaaa-aaaaj-a2beq-cai";
@@ -29,7 +28,7 @@ export const useAuth = () => {
       const authClient = await AuthClient.create();
       const identity = authClient.getIdentity();
 
-      const agent = new HttpAgent({ identity });
+      const agent = new HttpAgent({ identity, host: "https://ic0.app/" });
 
       const actor: ActorSubclass<_SERVICE> = Actor.createActor<_SERVICE>(
         idlFactory,

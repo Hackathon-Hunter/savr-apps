@@ -28,6 +28,59 @@ import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { useAuth } from "@/hooks/useAuth";
 import { useICPPrice } from "@/contexts/ICPPriceContext";
+import { getUserSavings } from "@/service/icService";
+
+// Icon mapping for different saving types
+const getSavingIcon = (savingName: string) => {
+  const name = savingName.toLowerCase();
+  if (
+    name.includes("vacation") ||
+    name.includes("travel") ||
+    name.includes("trip")
+  )
+    return Plane;
+  if (name.includes("car") || name.includes("vehicle")) return Car;
+  if (
+    name.includes("emergency") ||
+    name.includes("home") ||
+    name.includes("house")
+  )
+    return Home;
+  if (
+    name.includes("education") ||
+    name.includes("school") ||
+    name.includes("study")
+  )
+    return GraduationCap;
+  return Target; // Default icon
+};
+
+// Color mapping for different saving types
+const getSavingColor = (index: number) => {
+  const colors = [
+    "from-blue-500/20 to-cyan-500/20",
+    "from-green-500/20 to-emerald-500/20",
+    "from-purple-500/20 to-pink-500/20",
+    "from-orange-500/20 to-red-500/20",
+    "from-yellow-500/20 to-orange-500/20",
+    "from-indigo-500/20 to-purple-500/20",
+  ];
+  return colors[index % colors.length];
+};
+
+interface DashboardSaving {
+  id: number;
+  title: string;
+  target: number;
+  current: number;
+  monthlyTarget: number;
+  targetDate: string;
+  icon: unknown;
+  color: string;
+  progress: number;
+  status: string;
+  isStaking: boolean;
+}
 
 export default function Dashboard() {
   const router = useRouter();
@@ -36,9 +89,12 @@ export default function Dashboard() {
   const [copiedPrincipal, setCopiedPrincipal] = useState(false);
   const [icpBalance, setIcpBalance] = useState<number>(0);
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+  const [isLoadingSavings, setIsLoadingSavings] = useState(true);
+  const [savingsPlans, setSavingsPlans] = useState<DashboardSaving[]>([]);
+  const [savingsError, setSavingsError] = useState<string>("");
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
-  const { isAuthenticated, principal, isLoading, logout } = useAuth();
+  const { actor, isAuthenticated, principal, isLoading, logout } = useAuth();
   const { priceData, refreshPrice, formatUSD, formatICP } = useICPPrice();
 
   // Redirect to connect-wallet if not authenticated
@@ -89,53 +145,131 @@ export default function Dashboard() {
     fetchICPBalance();
   }, [isAuthenticated]);
 
-  // Mock data for savings plans (converted to ICP)
-  const savingsPlans = [
-    {
-      id: 1,
-      title: "Dream Vacation to Japan",
-      target: 964, // ~$12,000 in ICP
-      current: 193, // ~$2,400 in ICP
-      monthlyTarget: 60, // ~$750 in ICP
-      targetDate: "Feb 2026",
-      icon: Plane,
-      color: "from-blue-500/20 to-cyan-500/20",
-      progress: 20,
-    },
-    {
-      id: 2,
-      title: "New Car Fund",
-      target: 2008, // ~$25,000 in ICP
-      current: 703, // ~$8,750 in ICP
-      monthlyTarget: 96, // ~$1,200 in ICP
-      targetDate: "Dec 2025",
-      icon: Car,
-      color: "from-green-500/20 to-emerald-500/20",
-      progress: 35,
-    },
-    {
-      id: 3,
-      title: "Emergency Fund",
-      target: 1205, // ~$15,000 in ICP
-      current: 964, // ~$12,000 in ICP
-      monthlyTarget: 40, // ~$500 in ICP
-      targetDate: "Aug 2024",
-      icon: Home,
-      color: "from-purple-500/20 to-pink-500/20",
-      progress: 80,
-    },
-    {
-      id: 4,
-      title: "Education Fund",
-      target: 2410, // ~$30,000 in ICP
-      current: 361, // ~$4,500 in ICP
-      monthlyTarget: 64, // ~$800 in ICP
-      targetDate: "Sep 2027",
-      icon: GraduationCap,
-      color: "from-orange-500/20 to-red-500/20",
-      progress: 15,
-    },
-  ];
+  // Fetch savings data from IC backend
+  useEffect(() => {
+    const fetchSavingsData = async () => {
+      if (!actor || !isAuthenticated || !principal) return;
+
+      setIsLoadingSavings(true);
+      setSavingsError("");
+
+      try {
+
+        // Fetch user savings
+        const userSavingsData = await getUserSavings(actor, principal);
+
+        // Convert backend savings to dashboard format
+        const dashboardSavings: DashboardSaving[] = userSavingsData.map(
+          (saving, index) => {
+            // Convert nanoseconds timestamps to readable dates
+            const targetDate = new Date(
+              Number(saving.deadline) / 1000000
+            ).toLocaleDateString("en-US", {
+              month: "short",
+              year: "numeric",
+            });
+
+            // Convert amounts from e8s (1 ICP = 100,000,000 e8s) to ICP
+            const targetAmount = Number(saving.totalSaving) / 100000000;
+            const currentAmount = Number(saving.currentAmount) / 100000000;
+            const monthlyTarget = Number(saving.amount) / 100000000; // This is the target monthly saving
+
+            const progress =
+              targetAmount > 0
+                ? Math.round((currentAmount / targetAmount) * 100)
+                : 0;
+
+            // Map status
+            let status = "Active";
+            if ("Completed" in saving.status) status = "Completed";
+            if ("Cancelled" in saving.status) status = "Cancelled";
+
+            return {
+              id: Number(saving.id),
+              title: saving.savingName,
+              target: targetAmount,
+              current: currentAmount,
+              monthlyTarget: monthlyTarget,
+              targetDate: targetDate,
+              icon: getSavingIcon(saving.savingName),
+              color: getSavingColor(index),
+              progress: Math.min(progress, 100), // Cap at 100%
+              status: status,
+              isStaking: saving.isStaking,
+            };
+          }
+        );
+
+        setSavingsPlans(dashboardSavings);
+      } catch (error) {
+        console.error("Failed to fetch savings data:", error);
+        setSavingsError(
+          "Failed to load savings data. Please try refreshing the page."
+        );
+      } finally {
+        setIsLoadingSavings(false);
+      }
+    };
+
+    fetchSavingsData();
+  }, [actor, isAuthenticated, principal]);
+
+  const refreshSavingsData = async () => {
+    if (!actor || !isAuthenticated || !principal) return;
+
+    setIsLoadingSavings(true);
+    try {
+      // Re-fetch savings data
+      const userSavingsData = await getUserSavings(actor, principal);
+
+      // Convert to dashboard format
+      const dashboardSavings: DashboardSaving[] = userSavingsData.map(
+        (saving, index) => {
+          const targetDate = new Date(
+            Number(saving.deadline) / 1000000
+          ).toLocaleDateString("en-US", {
+            month: "short",
+            year: "numeric",
+          });
+
+          const targetAmount = Number(saving.totalSaving) / 100000000;
+          const currentAmount = Number(saving.currentAmount) / 100000000;
+          const monthlyTarget = Number(saving.amount) / 100000000;
+
+          const progress =
+            targetAmount > 0
+              ? Math.round((currentAmount / targetAmount) * 100)
+              : 0;
+
+          let status = "Active";
+          if ("Completed" in saving.status) status = "Completed";
+          if ("Cancelled" in saving.status) status = "Cancelled";
+
+          return {
+            id: Number(saving.id),
+            title: saving.savingName,
+            target: targetAmount,
+            current: currentAmount,
+            monthlyTarget: monthlyTarget,
+            targetDate: targetDate,
+            icon: getSavingIcon(saving.savingName),
+            color: getSavingColor(index),
+            progress: Math.min(progress, 100),
+            status: status,
+            isStaking: saving.isStaking,
+          };
+        }
+      );
+
+      setSavingsPlans(dashboardSavings);
+      setSavingsError("");
+    } catch (error) {
+      console.error("Failed to refresh savings data:", error);
+      setSavingsError("Failed to refresh savings data.");
+    } finally {
+      setIsLoadingSavings(false);
+    }
+  };
 
   const totalBalance = savingsPlans.reduce(
     (sum, plan) => sum + plan.current,
@@ -169,8 +303,8 @@ export default function Dashboard() {
     e.stopPropagation();
 
     try {
-      console.log("Logout button clicked"); // Debug log
-      setShowAccountMenu(false); // Close menu first
+      console.log("Logout button clicked");
+      setShowAccountMenu(false);
       await logout();
       router.push("/connect-wallet");
     } catch (error) {
@@ -192,7 +326,7 @@ export default function Dashboard() {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       // Mock refresh - replace with actual balance fetch
-      const mockBalance = 1247.83 + Math.random() * 10 - 5; // Small random variation
+      const mockBalance = 1247.83 + Math.random() * 10 - 5;
       setIcpBalance(mockBalance);
     } catch (error) {
       console.error("Failed to refresh balance:", error);
@@ -415,7 +549,7 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                {/* Logout Button - Fixed with better event handling */}
+                {/* Logout Button */}
                 <button
                   onClick={handleLogout}
                   onMouseDown={(e) => e.stopPropagation()}
@@ -587,26 +721,28 @@ export default function Dashboard() {
                 </div>
 
                 {/* Overall Progress */}
-                <div className="mt-8">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-white/60 text-sm">
-                      Overall Progress
-                    </span>
-                    <span className="text-white font-medium">
-                      {Math.round((totalBalance / totalTarget) * 100)}%
-                    </span>
+                {totalTarget > 0 && (
+                  <div className="mt-8">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-white/60 text-sm">
+                        Overall Progress
+                      </span>
+                      <span className="text-white font-medium">
+                        {Math.round((totalBalance / totalTarget) * 100)}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: "0%" }}
+                        animate={{
+                          width: `${(totalBalance / totalTarget) * 100}%`,
+                        }}
+                        transition={{ duration: 1.5, ease: "easeOut" }}
+                        className="h-full bg-white rounded-full"
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: "0%" }}
-                      animate={{
-                        width: `${(totalBalance / totalTarget) * 100}%`,
-                      }}
-                      transition={{ duration: 1.5, ease: "easeOut" }}
-                      className="h-full bg-white rounded-full"
-                    />
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </motion.div>
@@ -617,156 +753,274 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            <h2 className="text-2xl font-bold text-white mb-8">
-              Your Savings Plans
-            </h2>
-            <div className="grid gap-6">
-              {savingsPlans.map((plan, index) => (
-                <motion.div
-                  key={plan.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.6 + index * 0.1 }}
-                  className="relative group"
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-bold text-white">
+                Your Savings Plans
+              </h2>
+              {savingsPlans.length > 0 && (
+                <button
+                  onClick={refreshSavingsData}
+                  disabled={isLoadingSavings}
+                  className="flex items-center space-x-2 text-white/60 hover:text-white transition-colors duration-300 disabled:opacity-50"
                 >
-                  <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500" />
-                  <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-500">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
-                          <plan.icon size={24} className="text-white" />
-                        </div>
-                        <div>
-                          <h3 className="text-white font-semibold text-xl">
-                            {plan.title}
-                          </h3>
-                          <p className="text-white/60 text-sm">
-                            Target: {plan.targetDate}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <ShimmerButton
-                          className="px-4 py-2 text-sm"
-                          onClick={() => handleViewPlan(plan.id)}
-                          background="#ffffff"
-                          shimmerColor="#000000"
-                          shimmerSize="0.1em"
-                        >
-                          <span className="text-black">Details</span>
-                        </ShimmerButton>
-                        <ShimmerButton
-                          className="px-4 py-2 text-sm"
-                          onClick={() =>
-                            router.push(`/customize-plan/${plan.id}`)
-                          }
-                          background="#1f2937"
-                          shimmerColor="#ffffff"
-                          shimmerSize="0.1em"
-                        >
-                          <span className="text-white">Customize</span>
-                        </ShimmerButton>
-                        <button className="text-white/60 hover:text-white transition-colors duration-300">
-                          <MoreHorizontal size={20} />
-                        </button>
-                      </div>
-                    </div>
+                  <RefreshCw
+                    size={16}
+                    className={isLoadingSavings ? "animate-spin" : ""}
+                  />
+                  <span className="text-sm">Refresh</span>
+                </button>
+              )}
+            </div>
 
-                    {/* Progress Section */}
-                    <div className="mb-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="flex flex-col">
-                          <span className="text-white/60 text-sm">
-                            {formatICP(plan.current)} ICP of{" "}
-                            {formatICP(plan.target)} ICP
-                          </span>
-                          <span className="text-white/40 text-xs">
-                            ≈ ${formatUSD(plan.current)} of $
-                            {formatUSD(plan.target)} USD
-                          </span>
-                        </div>
-                        <span className="text-white font-medium">
-                          {plan.progress}%
-                        </span>
-                      </div>
-                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: "0%" }}
-                          animate={{ width: `${plan.progress}%` }}
-                          transition={{
-                            duration: 1.5,
-                            ease: "easeOut",
-                            delay: 0.8 + index * 0.1,
-                          }}
-                          className="h-full bg-white rounded-full"
-                        />
-                      </div>
-                    </div>
+            {/* Error State */}
+            {savingsError && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mb-6"
+              >
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center">
+                  <AlertCircle
+                    size={24}
+                    className="text-red-400 mx-auto mb-2"
+                  />
+                  <p className="text-red-400 font-medium">
+                    Error Loading Savings
+                  </p>
+                  <p className="text-red-400/70 text-sm mt-1">{savingsError}</p>
+                  <button
+                    onClick={refreshSavingsData}
+                    className="mt-3 px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/30 transition-all duration-300"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
-                    {/* Stats */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                        <p className="text-white/60 text-xs mb-1">
-                          Monthly Target
-                        </p>
-                        <p className="text-white font-semibold">
-                          {formatICP(plan.monthlyTarget)} ICP
-                        </p>
-                        <p className="text-white/40 text-xs">
-                          ≈ ${formatUSD(plan.monthlyTarget)} USD
-                        </p>
+            {/* Loading State */}
+            {isLoadingSavings && savingsPlans.length === 0 && (
+              <div className="grid gap-6">
+                {[1, 2, 3].map((index) => (
+                  <div key={index} className="animate-pulse">
+                    <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
+                      <div className="flex items-center space-x-4 mb-6">
+                        <div className="w-12 h-12 bg-white/10 rounded-xl"></div>
+                        <div className="flex-1">
+                          <div className="h-6 bg-white/10 rounded mb-2 w-48"></div>
+                          <div className="h-4 bg-white/10 rounded w-24"></div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <div className="h-8 bg-white/10 rounded w-20"></div>
+                          <div className="h-8 bg-white/10 rounded w-24"></div>
+                        </div>
                       </div>
-                      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                        <p className="text-white/60 text-xs mb-1">Remaining</p>
-                        <p className="text-white font-semibold">
-                          {formatICP(plan.target - plan.current)} ICP
-                        </p>
-                        <p className="text-white/40 text-xs">
-                          ≈ ${formatUSD(plan.target - plan.current)} USD
-                        </p>
+                      <div className="mb-4">
+                        <div className="h-4 bg-white/10 rounded mb-2"></div>
+                        <div className="h-2 bg-white/10 rounded"></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="h-16 bg-white/10 rounded-lg"></div>
+                        <div className="h-16 bg-white/10 rounded-lg"></div>
                       </div>
                     </div>
                   </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Empty State (if no plans) */}
-          {savingsPlans.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="text-center py-16"
-            >
-              <div className="relative">
-                <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-50" />
-                <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-12">
-                  <Target size={48} className="text-white/40 mx-auto mb-4" />
-                  <h3 className="text-white text-xl font-semibold mb-2">
-                    No Savings Plans Yet
-                  </h3>
-                  <p className="text-white/60 mb-8 max-w-md mx-auto">
-                    Start your financial journey by creating your first savings
-                    plan
-                  </p>
-                  <ShimmerButton
-                    className="px-8 py-4 text-lg font-medium"
-                    onClick={handleCreateNew}
-                    background="rgba(255, 255, 255, 0.1)"
-                    shimmerColor="#ffffff"
-                    shimmerSize="0.15em"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Plus size={20} className="text-white" />
-                      <span className="text-white">Create Your First Plan</span>
-                    </div>
-                  </ShimmerButton>
-                </div>
+                ))}
               </div>
-            </motion.div>
-          )}
+            )}
+
+            {/* Savings Plans Grid */}
+            {!isLoadingSavings && savingsPlans.length > 0 && (
+              <div className="grid gap-6">
+                {savingsPlans.map((plan, index) => (
+                  <motion.div
+                    key={plan.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.6 + index * 0.1 }}
+                    className="relative group"
+                  >
+                    <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                    <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-500">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+                            {/* <plan.icon size={24} className="text-white" /> */}
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <h3 className="text-white font-semibold text-xl">
+                                {plan.title}
+                              </h3>
+                              {plan.isStaking && (
+                                <span className="bg-green-500/20 border border-green-500/30 text-green-400 text-xs px-2 py-1 rounded-full">
+                                  Staking
+                                </span>
+                              )}
+                              <span
+                                className={`text-xs px-2 py-1 rounded-full ${
+                                  plan.status === "Active"
+                                    ? "bg-blue-500/20 border border-blue-500/30 text-blue-400"
+                                    : plan.status === "Completed"
+                                    ? "bg-green-500/20 border border-green-500/30 text-green-400"
+                                    : "bg-red-500/20 border border-red-500/30 text-red-400"
+                                }`}
+                              >
+                                {plan.status}
+                              </span>
+                            </div>
+                            <p className="text-white/60 text-sm">
+                              Target: {plan.targetDate}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <ShimmerButton
+                            className="px-4 py-2 text-sm"
+                            onClick={() => handleViewPlan(plan.id)}
+                            background="#ffffff"
+                            shimmerColor="#000000"
+                            shimmerSize="0.1em"
+                          >
+                            <span className="text-black">Details</span>
+                          </ShimmerButton>
+                          <ShimmerButton
+                            className="px-4 py-2 text-sm"
+                            onClick={() =>
+                              router.push(`/customize-plan/${plan.id}`)
+                            }
+                            background="#1f2937"
+                            shimmerColor="#ffffff"
+                            shimmerSize="0.1em"
+                          >
+                            <span className="text-white">Customize</span>
+                          </ShimmerButton>
+                          <button className="text-white/60 hover:text-white transition-colors duration-300">
+                            <MoreHorizontal size={20} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Progress Section */}
+                      <div className="mb-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex flex-col">
+                            <span className="text-white/60 text-sm">
+                              {formatICP(plan.current)} ICP of{" "}
+                              {formatICP(plan.target)} ICP
+                            </span>
+                            <span className="text-white/40 text-xs">
+                              ≈ ${formatUSD(plan.current)} of $
+                              {formatUSD(plan.target)} USD
+                            </span>
+                          </div>
+                          <span className="text-white font-medium">
+                            {plan.progress}%
+                          </span>
+                        </div>
+                        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: "0%" }}
+                            animate={{ width: `${plan.progress}%` }}
+                            transition={{
+                              duration: 1.5,
+                              ease: "easeOut",
+                              delay: 0.8 + index * 0.1,
+                            }}
+                            className="h-full bg-white rounded-full"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Stats */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                          <p className="text-white/60 text-xs mb-1">
+                            Monthly Target
+                          </p>
+                          <p className="text-white font-semibold">
+                            {formatICP(plan.monthlyTarget)} ICP
+                          </p>
+                          <p className="text-white/40 text-xs">
+                            ≈ ${formatUSD(plan.monthlyTarget)} USD
+                          </p>
+                        </div>
+                        <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                          <p className="text-white/60 text-xs mb-1">
+                            Remaining
+                          </p>
+                          <p className="text-white font-semibold">
+                            {formatICP(Math.max(0, plan.target - plan.current))}{" "}
+                            ICP
+                          </p>
+                          <p className="text-white/40 text-xs">
+                            ≈ $
+                            {formatUSD(Math.max(0, plan.target - plan.current))}{" "}
+                            USD
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Additional Info */}
+                      {plan.isStaking && (
+                        <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                          <div className="flex items-center space-x-2">
+                            <TrendingUp size={14} className="text-green-400" />
+                            <span className="text-green-400 text-sm font-medium">
+                              Earning ICP Staking Rewards (8.5% APY)
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!isLoadingSavings &&
+              savingsPlans.length === 0 &&
+              !savingsError && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.4 }}
+                  className="text-center py-16"
+                >
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-50" />
+                    <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-12">
+                      <Target
+                        size={48}
+                        className="text-white/40 mx-auto mb-4"
+                      />
+                      <h3 className="text-white text-xl font-semibold mb-2">
+                        No Savings Plans Yet
+                      </h3>
+                      <p className="text-white/60 mb-8 max-w-md mx-auto">
+                        Start your financial journey by creating your first
+                        savings plan with AI-powered recommendations
+                      </p>
+                      <ShimmerButton
+                        className="px-8 py-4 text-lg font-medium mx-auto"
+                        onClick={handleCreateNew}
+                        background="#ffffff"
+                        shimmerColor="#0a0a0a"
+                        shimmerSize="0.05em"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <Plus size={20} className="text-black" />
+                          <span className="text-black">
+                            Create Your First Plan
+                          </span>
+                        </div>
+                      </ShimmerButton>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+          </motion.div>
 
           {/* Bottom Decorative Element */}
           <motion.div
