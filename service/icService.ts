@@ -1,5 +1,11 @@
 import { ActorSubclass } from "@dfinity/agent";
-import { _SERVICE, Saving__1, SavingResponse, StartSavingRequest, Transaction__1 } from "./backend.did";
+import {
+  _SERVICE,
+  Saving__1,
+  SavingResponse,
+  StartSavingRequest,
+  Transaction__1,
+} from "./backend.did";
 
 export const getAllTransactions = async (
   actor: ActorSubclass<_SERVICE>
@@ -8,7 +14,7 @@ export const getAllTransactions = async (
     const result = await actor.getAllTransactions();
     return result;
   } catch (error) {
-    console.error("Error fetching data:", error);
+    console.error("Error fetching all transactions:", error);
     throw error;
   }
 };
@@ -21,7 +27,7 @@ export const getUserSavings = async (
     const result = await actor.getUserSavings(principalId);
     return result;
   } catch (error) {
-    console.error("Error fetching data:", error);
+    console.error("Error fetching user savings:", error);
     throw error;
   }
 };
@@ -32,9 +38,17 @@ export const startSaving = async (
 ): Promise<SavingResponse> => {
   try {
     const result = await actor.startSaving(args);
+
+    console.log("startSaving result:", result);
     return result;
   } catch (error) {
-    console.error("Error fetching data:", error);
+    console.error("Error creating saving plan:", error);
+
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
+
     throw error;
   }
 };

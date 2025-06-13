@@ -316,9 +316,10 @@ export default function Dashboard() {
     router.push("input-target");
   };
 
+  // Updated to pass the saving plan ID to the details page
   const handleViewPlan = (planId: number) => {
     console.log(`Viewing plan ${planId}`);
-    router.push("details");
+    router.push(`/details?id=${planId}`);
   };
 
   const refreshBalance = async () => {
@@ -845,7 +846,7 @@ export default function Dashboard() {
                       <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center space-x-4">
                           <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
-                            {/* <plan.icon size={24} className="text-white" /> */}
+                            <plan.icon size={24} className="text-white" />
                           </div>
                           <div>
                             <div className="flex items-center space-x-2">
