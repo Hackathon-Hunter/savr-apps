@@ -1,48 +1,59 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Wallet, Shield, Zap } from "lucide-react";
+import { Fingerprint, Shield, Zap, Key, Globe, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
+import { useAuth } from "@/hooks/useAuth";
 
-export default function ConnectWallet() {
+export default function ConnectInternetIdentity() {
   const router = useRouter();
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [authStep, setAuthStep] = useState(0);
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
+  const { isAuthenticated, principal, isLoading, login, logout } = useAuth();
 
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
+  const handleAuthenticate = async () => {
+    setIsAuthenticating(true);
 
-  const handleConnect = async () => {
-    setIsConnecting(true);
-    // Simulate connection process
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsConnecting(false);
+    // Simulate Internet Identity authentication process
+    setAuthStep(1); // Redirecting to II
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
+    setAuthStep(2); // Authentication at II
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    setAuthStep(3); // Receiving delegation
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    setAuthStep(4); // Verifying delegation
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    setIsAuthenticating(false);
     router.push("dashboard");
+  };
+
+  const getAuthStepText = () => {
+    switch (authStep) {
+      case 1:
+        return "Redirecting to Internet Identity...";
+      case 2:
+        return "Authenticating with your device...";
+      case 3:
+        return "Receiving delegation...";
+      case 4:
+        return "Verifying identity...";
+      default:
+        return "Authenticating...";
+    }
   };
 
   return (
     <div className="relative min-h-screen w-screen overflow-hidden bg-black">
       {/* Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
-
-      {/* Mouse Follow Glow */}
-      <div
-        className="absolute w-96 h-96 rounded-full bg-white/5 blur-3xl transition-all duration-500 ease-out pointer-events-none"
-        style={{
-          left: mousePosition.x - 192,
-          top: mousePosition.y - 192,
-        }}
-      />
 
       {/* Particles Background */}
       <div className="absolute inset-0 z-0">
@@ -69,14 +80,14 @@ export default function ConnectWallet() {
             className="text-center mb-12"
           >
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
-              Connect Wallet
+              Internet Identity
             </h1>
             <p className="text-white/60 text-lg font-light tracking-wide">
-              Connect your wallet to start your journey
+              Authenticate securely on the Internet Computer
             </p>
           </motion.div>
 
-          {/* Wallet Option Card */}
+          {/* Internet Identity Card */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -88,17 +99,17 @@ export default function ConnectWallet() {
 
             {/* Main Card */}
             <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 hover:border-white/20 hover:bg-black/20 transition-all duration-500">
-              {/* Wallet Icon and Info */}
+              {/* Internet Identity Icon and Info */}
               <div className="flex items-center space-x-4 mb-6">
                 <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
-                  <Wallet size={24} className="text-white" />
+                  <Fingerprint size={24} className="text-white" />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white">
-                    Bitfinity Wallet
+                    Internet Identity
                   </h3>
                   <p className="text-white/60 text-sm">
-                    Connect using browser wallet
+                    Cryptographic authentication for the IC
                   </p>
                 </div>
               </div>
@@ -107,29 +118,136 @@ export default function ConnectWallet() {
               <div className="space-y-3 mb-8">
                 <div className="flex items-center space-x-3 text-white/70">
                   <Shield size={16} />
-                  <span className="text-sm">Secure & encrypted</span>
+                  <span className="text-sm">WebAuthn-based security</span>
+                </div>
+                <div className="flex items-center space-x-3 text-white/70">
+                  <Key size={16} />
+                  <span className="text-sm">Register multiple devices</span>
+                </div>
+                <div className="flex items-center space-x-3 text-white/70">
+                  <Globe size={16} />
+                  <span className="text-sm">Unique identity for each dapp</span>
                 </div>
                 <div className="flex items-center space-x-3 text-white/70">
                   <Zap size={16} />
-                  <span className="text-sm">Fast transactions</span>
+                  <span className="text-sm">No usernames or passwords</span>
                 </div>
               </div>
 
-              {/* Connect Button */}
+              {/* Authenticate Button */}
               <ShimmerButton
                 background="#ffff"
                 shimmerColor="#0a0a0a"
                 shimmerSize="0.05em"
                 className="w-full"
-                onClick={handleConnect}
+                onClick={handleAuthenticate}
+                disabled={isAuthenticating}
               >
-                <div className="flex items-center space-x-3">
-                  <Wallet size={20} className="text-black" />
-                  <span className="text-lg font-medium tracking-wide text-black">
-                    {isConnecting ? "Connecting ...." : "Connect Wallet"}
-                  </span>
+                <div className="flex items-center justify-center space-x-3">
+                  {isAuthenticating ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          duration: 1,
+                          repeat: Number.POSITIVE_INFINITY,
+                          ease: "linear",
+                        }}
+                        className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full"
+                      />
+                      <span className="text-lg font-medium tracking-wide text-black">
+                        {getAuthStepText()}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Fingerprint size={20} className="text-black" />
+                      <span className="text-lg font-medium tracking-wide text-black">
+                        Sign In with Internet Identity
+                      </span>
+                    </>
+                  )}
                 </div>
               </ShimmerButton>
+            </div>
+          </motion.div>
+
+          {/* How It Works Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="mb-8"
+          >
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-6">
+              <h4 className="text-white font-semibold mb-4 text-center">
+                How Internet Identity Works
+              </h4>
+              <ol className="space-y-3">
+                <li className="flex items-start space-x-3 text-white/70">
+                  <span className="bg-white/10 rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                    1
+                  </span>
+                  <span className="text-sm">
+                    You&apos;ll be redirected to the Internet Identity service
+                  </span>
+                </li>
+                <li className="flex items-start space-x-3 text-white/70">
+                  <span className="bg-white/10 rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                    2
+                  </span>
+                  <span className="text-sm">
+                    Authenticate using your registered device (biometrics,
+                    security key, etc.)
+                  </span>
+                </li>
+                <li className="flex items-start space-x-3 text-white/70">
+                  <span className="bg-white/10 rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                    3
+                  </span>
+                  <span className="text-sm">
+                    You&apos;ll receive a unique pseudonymous identity for this
+                    application
+                  </span>
+                </li>
+                <li className="flex items-start space-x-3 text-white/70">
+                  <span className="bg-white/10 rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                    4
+                  </span>
+                  <span className="text-sm">
+                    You&apos;ll be redirected back to continue your session
+                  </span>
+                </li>
+              </ol>
+            </div>
+          </motion.div>
+
+          {/* New User Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="mb-8"
+          >
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-6">
+              <h4 className="text-white font-semibold mb-3 text-center">
+                New to Internet Identity?
+              </h4>
+              <p className="text-white/60 text-sm mb-4 text-center">
+                You&apos;ll be able to create a new Internet Identity during the
+                sign-in process
+              </p>
+              <div className="flex justify-center">
+                <a
+                  href="https://identity.ic0.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 text-white/70 hover:text-white transition-colors duration-300"
+                >
+                  <span className="text-sm">Learn more</span>
+                  <ArrowRight size={14} />
+                </a>
+              </div>
             </div>
           </motion.div>
 
@@ -137,12 +255,12 @@ export default function ConnectWallet() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
             className="text-center"
           >
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4">
               <p className="text-white/50 text-sm leading-relaxed">
-                By connecting your wallet, you agree to our{" "}
+                By authenticating with Internet Identity, you agree to our{" "}
                 <span className="text-white/70 hover:text-white cursor-pointer transition-colors duration-300">
                   Terms of Service
                 </span>{" "}

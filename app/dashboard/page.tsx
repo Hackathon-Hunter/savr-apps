@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -22,20 +22,10 @@ import { ShimmerButton } from "@/components/magicui/shimmer-button";
 
 export default function Dashboard() {
   const router = useRouter();
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [showBalance, setShowBalance] = useState(true);
 
   // Mock ICP to USD conversion rate (this would come from an API in real app)
   const icpToUsd = 12.45; // Example rate: 1 ICP = $12.45 USD
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
 
   // Mock data for savings plans (converted to ICP)
   const savingsPlans = [
@@ -122,15 +112,6 @@ export default function Dashboard() {
     <div className="relative min-h-screen w-screen overflow-hidden bg-black">
       {/* Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
-
-      {/* Mouse Follow Glow */}
-      <div
-        className="absolute w-96 h-96 rounded-full bg-white/5 blur-3xl transition-all duration-500 ease-out pointer-events-none"
-        style={{
-          left: mousePosition.x - 192,
-          top: mousePosition.y - 192,
-        }}
-      />
 
       {/* Particles Background */}
       <div className="absolute inset-0 z-0">

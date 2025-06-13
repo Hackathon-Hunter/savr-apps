@@ -4,23 +4,12 @@ import AnimatedContent from "@/components/reactbits/AnimatedContent/AnimatedCont
 import BlurText from "@/components/reactbits/BlurText/BlurText";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, Rocket, Brain, TrendingUp, Shield, Zap } from "lucide-react";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 
 export default function Home() {
   const router = useRouter();
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
 
   const handleButton = () => router.push("connect-wallet");
 
@@ -45,15 +34,6 @@ export default function Home() {
     <div className="relative min-h-screen w-screen overflow-hidden bg-black">
       {/* Subtle Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-800 via-black to-gray-800" />
-
-      {/* Mouse Follow Subtle Glow */}
-      <div
-        className="absolute w-96 h-96 rounded-full bg-white/5 blur-3xl transition-all duration-500 ease-out pointer-events-none"
-        style={{
-          left: mousePosition.x - 192,
-          top: mousePosition.y - 192,
-        }}
-      />
 
       {/* Monochrome Particles */}
       <div className="absolute inset-0 z-0">
