@@ -128,5 +128,160 @@ export interface _SERVICE {
   transferOwnership: ActorMethod<[Principal], boolean>;
   updateSaving: ActorMethod<[UpdateSavingRequest], SavingResponse>;
 }
-export declare const idlFactory: IDL.InterfaceFactory;
-export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];
+
+export const idlFactory: IDL.InterfaceFactory = ({ IDL }) => {
+  const SavingId = IDL.Nat;
+  const SavingStatus = IDL.Variant({
+    Active: IDL.Null,
+    Cancelled: IDL.Null,
+    Completed: IDL.Null,
+  });
+  const TopUpHistory = IDL.Record({
+    date: IDL.Int,
+    amount: IDL.Nat,
+  });
+  const SavingWithHistory = IDL.Record({
+    id: SavingId,
+    status: SavingStatus,
+    topUpHistory: IDL.Vec(TopUpHistory),
+    isStaking: IDL.Bool,
+    savingName: IDL.Text,
+    createdAt: IDL.Int,
+    deadline: IDL.Int,
+    updatedAt: IDL.Int,
+    priorityLevel: IDL.Nat,
+    currentAmount: IDL.Nat,
+    amount: IDL.Nat,
+    principalId: IDL.Principal,
+    totalSaving: IDL.Nat,
+    savingsRate: IDL.Nat,
+  });
+  const SavingId__1 = SavingId;
+  const TransactionId = IDL.Nat;
+  const TransactionStatus = IDL.Variant({
+    Failed: IDL.Text,
+    Completed: IDL.Null,
+    Pending: IDL.Null,
+  });
+  const TransactionType = IDL.Variant({
+    Saving: IDL.Null,
+    TopUp: IDL.Null,
+  });
+  const Transaction__1 = IDL.Record({
+    id: TransactionId,
+    to: IDL.Principal,
+    status: TransactionStatus,
+    transactionType: TransactionType,
+    from: IDL.Principal,
+    memo: IDL.Opt(IDL.Text),
+    savingId: IDL.Opt(SavingId),
+    blockIndex: IDL.Opt(IDL.Nat),
+    timestamp: IDL.Int,
+    amount: IDL.Nat,
+  });
+  const Saving__1 = IDL.Record({
+    id: SavingId,
+    status: SavingStatus,
+    isStaking: IDL.Bool,
+    savingName: IDL.Text,
+    createdAt: IDL.Int,
+    deadline: IDL.Int,
+    updatedAt: IDL.Int,
+    priorityLevel: IDL.Nat,
+    currentAmount: IDL.Nat,
+    amount: IDL.Nat,
+    principalId: IDL.Principal,
+    totalSaving: IDL.Nat,
+    savingsRate: IDL.Nat,
+  });
+  const StartSavingRequest = IDL.Record({
+    isStaking: IDL.Opt(IDL.Bool),
+    savingName: IDL.Text,
+    deadline: IDL.Int,
+    priorityLevel: IDL.Opt(IDL.Nat),
+    amount: IDL.Nat,
+    principalId: IDL.Text,
+    totalSaving: IDL.Nat,
+    savingsRate: IDL.Opt(IDL.Nat),
+  });
+  const Saving = IDL.Record({
+    id: SavingId,
+    status: SavingStatus,
+    isStaking: IDL.Bool,
+    savingName: IDL.Text,
+    createdAt: IDL.Int,
+    deadline: IDL.Int,
+    updatedAt: IDL.Int,
+    priorityLevel: IDL.Nat,
+    currentAmount: IDL.Nat,
+    amount: IDL.Nat,
+    principalId: IDL.Principal,
+    totalSaving: IDL.Nat,
+    savingsRate: IDL.Nat,
+  });
+  const SavingResponse = IDL.Variant({ Ok: Saving, Err: IDL.Text });
+  const TopUpRequest = IDL.Record({
+    savingId: SavingId,
+    amount: IDL.Nat,
+    principalId: IDL.Text,
+  });
+  const Transaction = IDL.Record({
+    id: TransactionId,
+    to: IDL.Principal,
+    status: TransactionStatus,
+    transactionType: TransactionType,
+    from: IDL.Principal,
+    memo: IDL.Opt(IDL.Text),
+    savingId: IDL.Opt(SavingId),
+    blockIndex: IDL.Opt(IDL.Nat),
+    timestamp: IDL.Int,
+    amount: IDL.Nat,
+  });
+  const TransactionResponse = IDL.Variant({
+    Ok: Transaction,
+    Err: IDL.Text,
+  });
+  const UpdateSavingRequest = IDL.Record({
+    isStaking: IDL.Opt(IDL.Bool),
+    savingName: IDL.Opt(IDL.Text),
+    savingId: SavingId,
+    deadline: IDL.Opt(IDL.Int),
+    priorityLevel: IDL.Opt(IDL.Nat),
+    totalSaving: IDL.Opt(IDL.Nat),
+    savingsRate: IDL.Opt(IDL.Nat),
+  });
+  return IDL.Service({
+    getAllTransactions: IDL.Func([], [IDL.Vec(Transaction__1)], ["query"]),
+    getCanisterId: IDL.Func([], [IDL.Principal], ["query"]),
+    getOwner: IDL.Func([], [IDL.Principal], ["query"]),
+    getSavingTransactions: IDL.Func(
+      [SavingId__1],
+      [IDL.Vec(Transaction__1)],
+      ["query"]
+    ),
+    getSavingWithHistory: IDL.Func(
+      [SavingId__1],
+      [IDL.Opt(SavingWithHistory)],
+      ["query"]
+    ),
+    getTransactionDetail: IDL.Func(
+      [IDL.Nat],
+      [IDL.Opt(Transaction__1)],
+      ["query"]
+    ),
+    getUserSavings: IDL.Func([IDL.Text], [IDL.Vec(Saving__1)], ["query"]),
+    getUserTransactions: IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(Transaction__1)],
+      ["query"]
+    ),
+    startSaving: IDL.Func([StartSavingRequest], [SavingResponse], []),
+    topUpSaving: IDL.Func([TopUpRequest], [TransactionResponse], []),
+    transferOwnership: IDL.Func([IDL.Principal], [IDL.Bool], []),
+    updateSaving: IDL.Func([UpdateSavingRequest], [SavingResponse], []),
+  });
+};
+
+export const init: (args: { IDL: typeof IDL }) => IDL.Type[] = () => {
+  return [];
+};

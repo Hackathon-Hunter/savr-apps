@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Plus,
   Target,
   Calendar,
   TrendingUp,
+  TrendingDown,
   Wallet,
   Eye,
   EyeOff,
@@ -15,17 +16,78 @@ import {
   Car,
   Home,
   GraduationCap,
+  LogOut,
+  User,
+  Copy,
+  Check,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
+import { useAuth } from "@/hooks/useAuth";
+import { useICPPrice } from "@/contexts/ICPPriceContext";
 
 export default function Dashboard() {
   const router = useRouter();
   const [showBalance, setShowBalance] = useState(true);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [copiedPrincipal, setCopiedPrincipal] = useState(false);
+  const [icpBalance, setIcpBalance] = useState<number>(0);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
-  // Mock ICP to USD conversion rate (this would come from an API in real app)
-  const icpToUsd = 12.45; // Example rate: 1 ICP = $12.45 USD
+  const { isAuthenticated, principal, isLoading, logout } = useAuth();
+  const { priceData, refreshPrice, formatUSD, formatICP } = useICPPrice();
+
+  // Redirect to connect-wallet if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/connect-wallet");
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  // Close account menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        accountMenuRef.current &&
+        !accountMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowAccountMenu(false);
+      }
+    };
+
+    if (showAccountMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showAccountMenu]);
+
+  // Mock function to fetch ICP balance (replace with actual canister call)
+  useEffect(() => {
+    const fetchICPBalance = async () => {
+      if (!isAuthenticated) return;
+
+      setIsLoadingBalance(true);
+      try {
+        // Simulate API call delay
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Mock balance - replace with actual balance fetch from ICP ledger
+        const mockBalance = 1247.83; // This should come from the ICP ledger canister
+        setIcpBalance(mockBalance);
+      } catch (error) {
+        console.error("Failed to fetch ICP balance:", error);
+        setIcpBalance(0);
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    };
+
+    fetchICPBalance();
+  }, [isAuthenticated]);
 
   // Mock data for savings plans (converted to ICP)
   const savingsPlans = [
@@ -85,18 +147,35 @@ export default function Dashboard() {
     0
   );
 
-  const formatICP = (amount: number) => {
-    return amount.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+  const formatPrincipal = (principal: string) => {
+    if (principal.length <= 20) return principal;
+    return `${principal.slice(0, 8)}...${principal.slice(-8)}`;
   };
 
-  const formatUSD = (icpAmount: number) => {
-    return (icpAmount * icpToUsd).toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
+  const copyPrincipal = async () => {
+    if (!principal) return;
+
+    try {
+      await navigator.clipboard.writeText(principal);
+      setCopiedPrincipal(true);
+      setTimeout(() => setCopiedPrincipal(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy principal:", error);
+    }
+  };
+
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      console.log("Logout button clicked"); // Debug log
+      setShowAccountMenu(false); // Close menu first
+      await logout();
+      router.push("/connect-wallet");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   const handleCreateNew = () => {
@@ -107,6 +186,58 @@ export default function Dashboard() {
     console.log(`Viewing plan ${planId}`);
     router.push("details");
   };
+
+  const refreshBalance = async () => {
+    setIsLoadingBalance(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Mock refresh - replace with actual balance fetch
+      const mockBalance = 1247.83 + Math.random() * 10 - 5; // Small random variation
+      setIcpBalance(mockBalance);
+    } catch (error) {
+      console.error("Failed to refresh balance:", error);
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+
+  const handleRefreshPrice = async () => {
+    await refreshPrice();
+  };
+
+  const formatTimeAgo = (date: Date) => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400)
+      return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  };
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="relative min-h-screen w-screen overflow-hidden bg-black flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{
+            duration: 1,
+            repeat: Number.POSITIVE_INFINITY,
+            ease: "linear",
+          }}
+          className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full"
+        />
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated (will redirect)
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="relative min-h-screen w-screen overflow-hidden bg-black">
@@ -127,8 +258,181 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* Top Account Bar */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="absolute top-0 left-0 right-0 z-20 p-4"
+      >
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+              <Target size={16} className="text-white" />
+            </div>
+            <span className="text-white font-bold text-lg">SAVR</span>
+          </div>
+
+          {/* Account Info */}
+          <div className="relative" ref={accountMenuRef}>
+            <button
+              onClick={() => setShowAccountMenu(!showAccountMenu)}
+              className="flex items-center space-x-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl p-3 hover:border-white/20 hover:bg-black/20 transition-all duration-300"
+            >
+              <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                <User size={16} className="text-white" />
+              </div>
+              <div className="hidden md:block text-left">
+                <p className="text-white text-sm font-medium">
+                  {formatPrincipal(principal || "")}
+                </p>
+                <p className="text-white/60 text-xs">
+                  {isLoadingBalance
+                    ? "Loading..."
+                    : `${formatICP(icpBalance)} ICP`}
+                </p>
+              </div>
+              <MoreHorizontal size={16} className="text-white/60" />
+            </button>
+
+            {/* Account Dropdown */}
+            {showAccountMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute top-full right-0 mt-2 w-80 bg-black/90 backdrop-blur-xl border border-white/20 rounded-xl p-4 shadow-2xl z-50"
+              >
+                {/* ICP Balance */}
+                <div className="mb-4 p-4 bg-white/5 rounded-lg border border-white/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-white font-medium">ICP Balance</h4>
+                    <button
+                      onClick={refreshBalance}
+                      disabled={isLoadingBalance}
+                      className="text-white/60 hover:text-white transition-colors duration-300 disabled:opacity-50"
+                    >
+                      <RefreshCw
+                        size={16}
+                        className={isLoadingBalance ? "animate-spin" : ""}
+                      />
+                    </button>
+                  </div>
+                  {isLoadingBalance ? (
+                    <div className="animate-pulse">
+                      <div className="h-6 bg-white/10 rounded mb-1"></div>
+                      <div className="h-4 bg-white/10 rounded w-24"></div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-white text-xl font-bold">
+                        {formatICP(icpBalance)} ICP
+                      </p>
+                      <p className="text-white/60 text-sm">
+                        ≈ ${formatUSD(icpBalance)} USD
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {/* Principal ID */}
+                <div className="mb-4 p-4 bg-white/5 rounded-lg border border-white/10">
+                  <h4 className="text-white font-medium mb-2">Principal ID</h4>
+                  <div className="flex items-center space-x-2">
+                    <p className="text-white/80 text-sm font-mono flex-1 break-all">
+                      {principal}
+                    </p>
+                    <button
+                      onClick={copyPrincipal}
+                      className="text-white/60 hover:text-white transition-colors duration-300"
+                    >
+                      {copiedPrincipal ? (
+                        <Check size={16} className="text-green-400" />
+                      ) : (
+                        <Copy size={16} />
+                      )}
+                    </button>
+                  </div>
+                  {copiedPrincipal && (
+                    <p className="text-green-400 text-xs mt-1">Copied!</p>
+                  )}
+                </div>
+
+                {/* Live ICP Price */}
+                <div className="mb-4 p-4 bg-white/5 rounded-lg border border-white/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-white font-medium">ICP Price</h4>
+                    <button
+                      onClick={handleRefreshPrice}
+                      disabled={priceData.isLoading}
+                      className="text-white/60 hover:text-white transition-colors duration-300 disabled:opacity-50"
+                    >
+                      <RefreshCw
+                        size={16}
+                        className={priceData.isLoading ? "animate-spin" : ""}
+                      />
+                    </button>
+                  </div>
+
+                  {priceData.error ? (
+                    <div className="flex items-center space-x-2 text-red-400">
+                      <AlertCircle size={16} />
+                      <span className="text-sm">Failed to load price</span>
+                    </div>
+                  ) : priceData.isLoading && priceData.price === 0 ? (
+                    <div className="animate-pulse">
+                      <div className="h-6 bg-white/10 rounded mb-1"></div>
+                      <div className="h-4 bg-white/10 rounded w-20"></div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center space-x-2">
+                        <p className="text-white text-xl font-bold">
+                          ${priceData.price.toFixed(2)}
+                        </p>
+                        <div
+                          className={`flex items-center space-x-1 text-sm ${
+                            priceData.changePercent24h >= 0
+                              ? "text-green-400"
+                              : "text-red-400"
+                          }`}
+                        >
+                          {priceData.changePercent24h >= 0 ? (
+                            <TrendingUp size={14} />
+                          ) : (
+                            <TrendingDown size={14} />
+                          )}
+                          <span>
+                            {Math.abs(priceData.changePercent24h).toFixed(2)}%
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-white/40 text-xs mt-1">
+                        Updated {formatTimeAgo(priceData.lastUpdated)}
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {/* Logout Button - Fixed with better event handling */}
+                <button
+                  onClick={handleLogout}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="w-full flex items-center justify-center space-x-2 bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 hover:bg-red-500/20 hover:border-red-500/30 transition-all duration-300 cursor-pointer select-none active:scale-95"
+                  style={{ pointerEvents: "auto" }}
+                >
+                  <LogOut size={16} />
+                  <span>Logout</span>
+                </button>
+              </motion.div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
       {/* Main Content */}
-      <div className="relative z-10 px-4 py-12">
+      <div className="relative z-10 px-4 py-20 pt-24">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <motion.div
@@ -145,12 +449,37 @@ export default function Dashboard() {
                 <p className="text-white/60 text-lg font-light">
                   Track your progress toward financial freedom
                 </p>
-                {/* ICP Rate Display */}
+                {/* Live ICP Rate Display */}
                 <div className="mt-2 flex items-center space-x-2">
-                  <span className="text-white/40 text-sm">
-                    1 ICP = ${icpToUsd} USD
-                  </span>
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  {priceData.error ? (
+                    <div className="flex items-center space-x-2 text-red-400">
+                      <AlertCircle size={14} />
+                      <span className="text-sm">Price unavailable</span>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="text-white/40 text-sm">
+                        1 ICP = ${priceData.price.toFixed(2)} USD
+                      </span>
+                      <div
+                        className={`flex items-center space-x-1 ${
+                          priceData.changePercent24h >= 0
+                            ? "text-green-400"
+                            : "text-red-400"
+                        }`}
+                      >
+                        {priceData.changePercent24h >= 0 ? (
+                          <TrendingUp size={12} />
+                        ) : (
+                          <TrendingDown size={12} />
+                        )}
+                        <span className="text-xs">
+                          {Math.abs(priceData.changePercent24h).toFixed(2)}%
+                        </span>
+                      </div>
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="mt-6 md:mt-0">
@@ -182,7 +511,7 @@ export default function Dashboard() {
               <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-semibold text-white">
-                    Current Balance
+                    Account Overview
                   </h2>
                   <button
                     onClick={() => setShowBalance(!showBalance)}
@@ -196,6 +525,25 @@ export default function Dashboard() {
                   <div className="bg-white/5 rounded-xl p-6 border border-white/10">
                     <div className="flex items-center space-x-2 mb-2">
                       <Wallet size={20} className="text-white/60" />
+                      <p className="text-white/60 text-sm">ICP Wallet</p>
+                    </div>
+                    <p className="text-white text-3xl font-bold">
+                      {showBalance
+                        ? isLoadingBalance
+                          ? "••••••"
+                          : `${formatICP(icpBalance)} ICP`
+                        : "••••••"}
+                    </p>
+                    {showBalance && !isLoadingBalance && (
+                      <p className="text-white/50 text-sm mt-1">
+                        ≈ ${formatUSD(icpBalance)} USD
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Target size={20} className="text-white/60" />
                       <p className="text-white/60 text-sm">Total Saved</p>
                     </div>
                     <p className="text-white text-3xl font-bold">
@@ -206,21 +554,6 @@ export default function Dashboard() {
                     {showBalance && (
                       <p className="text-white/50 text-sm mt-1">
                         ≈ ${formatUSD(totalBalance)} USD
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Target size={20} className="text-white/60" />
-                      <p className="text-white/60 text-sm">Total Goals</p>
-                    </div>
-                    <p className="text-white text-3xl font-bold">
-                      {showBalance ? `${formatICP(totalTarget)} ICP` : "••••••"}
-                    </p>
-                    {showBalance && (
-                      <p className="text-white/50 text-sm mt-1">
-                        ≈ ${formatUSD(totalTarget)} USD
                       </p>
                     )}
                   </div>

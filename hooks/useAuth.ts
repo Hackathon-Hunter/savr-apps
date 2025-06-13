@@ -45,6 +45,7 @@ export const useAuth = () => {
         actor,
         authClient,
         isAuthenticated,
+        principal: identity.getPrincipal().toString(),
       }));
     } catch (error) {
       console.error("Failed to update actor:", error);

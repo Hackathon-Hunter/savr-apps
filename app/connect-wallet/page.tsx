@@ -1,8 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Fingerprint, Shield, Zap, Key, Globe, ArrowRight } from "lucide-react";
+import {
+  Fingerprint,
+  Shield,
+  Zap,
+  Key,
+  Globe,
+  ArrowRight,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
@@ -11,43 +20,123 @@ import { useAuth } from "@/hooks/useAuth";
 export default function ConnectInternetIdentity() {
   const router = useRouter();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [authStep, setAuthStep] = useState(0);
+  const [authError, setAuthError] = useState<string>("");
+  const [authSuccess, setAuthSuccess] = useState(false);
 
   const { isAuthenticated, principal, isLoading, login, logout } = useAuth();
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      setAuthSuccess(true);
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 1500);
+    }
+  }, [isAuthenticated, isLoading, router]);
+
   const handleAuthenticate = async () => {
+    if (isAuthenticating || isLoading) return;
+
     setIsAuthenticating(true);
+    setAuthError("");
+    setAuthSuccess(false);
 
-    // Simulate Internet Identity authentication process
-    setAuthStep(1); // Redirecting to II
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    setAuthStep(2); // Authentication at II
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    setAuthStep(3); // Receiving delegation
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    setAuthStep(4); // Verifying delegation
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    setIsAuthenticating(false);
-    router.push("dashboard");
+    try {
+      await login();
+      // Success will be handled by the useEffect above
+    } catch (error) {
+      console.error("Authentication failed:", error);
+      setAuthError(
+        error instanceof Error
+          ? error.message
+          : "Failed to authenticate with Internet Identity. Please try again."
+      );
+    } finally {
+      setIsAuthenticating(false);
+    }
   };
 
-  const getAuthStepText = () => {
-    switch (authStep) {
-      case 1:
-        return "Redirecting to Internet Identity...";
-      case 2:
-        return "Authenticating with your device...";
-      case 3:
-        return "Receiving delegation...";
-      case 4:
-        return "Verifying identity...";
-      default:
-        return "Authenticating...";
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setAuthSuccess(false);
+      setAuthError("");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      setAuthError("Failed to logout. Please try again.");
     }
+  };
+
+  const getButtonContent = () => {
+    if (isLoading) {
+      return (
+        <>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{
+              duration: 1,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: "linear",
+            }}
+            className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full"
+          />
+          <span className="text-lg font-medium tracking-wide text-black">
+            Loading...
+          </span>
+        </>
+      );
+    }
+
+    if (isAuthenticating) {
+      return (
+        <>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{
+              duration: 1,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: "linear",
+            }}
+            className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full"
+          />
+          <span className="text-lg font-medium tracking-wide text-black">
+            Authenticating...
+          </span>
+        </>
+      );
+    }
+
+    if (authSuccess) {
+      return (
+        <>
+          <CheckCircle size={20} className="text-black" />
+          <span className="text-lg font-medium tracking-wide text-black">
+            Success! Redirecting...
+          </span>
+        </>
+      );
+    }
+
+    if (isAuthenticated) {
+      return (
+        <>
+          <CheckCircle size={20} className="text-black" />
+          <span className="text-lg font-medium tracking-wide text-black">
+            Already Connected
+          </span>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Fingerprint size={20} className="text-black" />
+        <span className="text-lg font-medium tracking-wide text-black">
+          Sign In with Internet Identity
+        </span>
+      </>
+    );
   };
 
   return (
@@ -86,6 +175,61 @@ export default function ConnectInternetIdentity() {
               Authenticate securely on the Internet Computer
             </p>
           </motion.div>
+
+          {/* Success Message */}
+          {authSuccess && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-6"
+            >
+              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-center">
+                <CheckCircle
+                  size={24}
+                  className="text-green-400 mx-auto mb-2"
+                />
+                <p className="text-green-400 font-medium">
+                  Authentication Successful!
+                </p>
+                <p className="text-green-400/70 text-sm mt-1">
+                  Redirecting to dashboard...
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Error Message */}
+          {authError && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-6"
+            >
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center">
+                <AlertCircle size={24} className="text-red-400 mx-auto mb-2" />
+                <p className="text-red-400 font-medium">
+                  Authentication Failed
+                </p>
+                <p className="text-red-400/70 text-sm mt-1">{authError}</p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Current User Info */}
+          {isAuthenticated && principal && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-6"
+            >
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <p className="text-white/60 text-sm mb-2">Connected as:</p>
+                <p className="text-white text-sm font-mono break-all">
+                  {principal}
+                </p>
+              </div>
+            </motion.div>
+          )}
 
           {/* Internet Identity Card */}
           <motion.div
@@ -134,41 +278,50 @@ export default function ConnectInternetIdentity() {
                 </div>
               </div>
 
-              {/* Authenticate Button */}
-              <ShimmerButton
-                background="#ffff"
-                shimmerColor="#0a0a0a"
-                shimmerSize="0.05em"
-                className="w-full"
-                onClick={handleAuthenticate}
-                disabled={isAuthenticating}
-              >
-                <div className="flex items-center justify-center space-x-3">
-                  {isAuthenticating ? (
-                    <>
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{
-                          duration: 1,
-                          repeat: Number.POSITIVE_INFINITY,
-                          ease: "linear",
-                        }}
-                        className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full"
-                      />
-                      <span className="text-lg font-medium tracking-wide text-black">
-                        {getAuthStepText()}
+              {/* Action Buttons */}
+              <div className="space-y-4">
+                {/* Main Auth Button */}
+                <ShimmerButton
+                  background="#ffff"
+                  shimmerColor="#0a0a0a"
+                  shimmerSize="0.05em"
+                  className="w-full"
+                  onClick={handleAuthenticate}
+                  disabled={isAuthenticating || isLoading || authSuccess}
+                >
+                  <div className="flex items-center justify-center space-x-3">
+                    {getButtonContent()}
+                  </div>
+                </ShimmerButton>
+
+                {/* Logout Button (only show if authenticated) */}
+                {isAuthenticated && !authSuccess && (
+                  <button
+                    onClick={handleLogout}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 text-white/80 hover:bg-white/10 hover:border-white/20 transition-all duration-300"
+                  >
+                    Disconnect
+                  </button>
+                )}
+
+                {/* Continue Button (only show if authenticated) */}
+                {isAuthenticated && !authSuccess && (
+                  <ShimmerButton
+                    background="#1f2937"
+                    shimmerColor="#ffffff"
+                    shimmerSize="0.05em"
+                    className="w-full"
+                    onClick={() => router.push("/dashboard")}
+                  >
+                    <div className="flex items-center justify-center space-x-3">
+                      <ArrowRight size={20} className="text-white" />
+                      <span className="text-lg font-medium tracking-wide text-white">
+                        Continue to Dashboard
                       </span>
-                    </>
-                  ) : (
-                    <>
-                      <Fingerprint size={20} className="text-black" />
-                      <span className="text-lg font-medium tracking-wide text-black">
-                        Sign In with Internet Identity
-                      </span>
-                    </>
-                  )}
-                </div>
-              </ShimmerButton>
+                    </div>
+                  </ShimmerButton>
+                )}
+              </div>
             </div>
           </motion.div>
 
