@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Settings,
@@ -18,24 +18,55 @@ import {
 import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
+import { useSavingsAnalysis } from "@/contexts/SavingsAnalysisContext";
 
 export default function CustomizePlan() {
   const router = useRouter();
+  const { analysisData, userInput, icpToUsdRate } = useSavingsAnalysis();
 
-  // Mock ICP to USD conversion rate (this would come from an API in real app)
-  const icpToUsd = 12.45; // Example rate: 1 ICP = $12.45 USD
+  // Redirect if no analysis data
+  useEffect(() => {
+    if (!analysisData || !userInput) {
+      router.push('/input-target');
+    }
+  }, [analysisData, userInput, router]);
 
-  // Form state (converted to ICP)
+  // Initialize form state with analysis data
   const [planData, setPlanData] = useState({
-    target: "Dream Vacation to Japan",
-    targetAmount: 963.86, // ~$12,000 in ICP
-    monthlyIncome: 401.61, // ~$5,000 in ICP
+    target: "",
+    targetAmount: 0,
+    monthlyIncome: 0,
     savingsRate: 15,
     timeline: 18,
-    priority: "medium",
+    priority: "medium" as "low" | "medium" | "high",
     autoTransfer: true,
     emergencyBuffer: true,
   });
+
+  // Update form data when analysis data is available
+  useEffect(() => {
+    if (analysisData && userInput) {
+      setPlanData({
+        target: userInput.target,
+        targetAmount: analysisData.estimatedCost.icp,
+        monthlyIncome: userInput.monthlyIncome / icpToUsdRate,
+        savingsRate: analysisData.monthlySavings.percentage,
+        timeline: analysisData.timeline.months,
+        priority: "medium",
+        autoTransfer: true,
+        emergencyBuffer: true,
+      });
+    }
+  }, [analysisData, userInput, icpToUsdRate]);
+
+  // Show loading if no data yet
+  if (!analysisData || !userInput) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-xl">Loading plan data...</div>
+      </div>
+    );
+  }
 
   const handleBack = () => {
     router.back();
@@ -49,16 +80,18 @@ export default function CustomizePlan() {
 
   const handleReset = () => {
     // Reset to AI recommendations
-    setPlanData({
-      target: "Dream Vacation to Japan",
-      targetAmount: 963.86,
-      monthlyIncome: 401.61,
-      savingsRate: 15,
-      timeline: 18,
-      priority: "medium",
-      autoTransfer: true,
-      emergencyBuffer: true,
-    });
+    if (analysisData && userInput) {
+      setPlanData({
+        target: userInput.target,
+        targetAmount: analysisData.estimatedCost.icp,
+        monthlyIncome: userInput.monthlyIncome / icpToUsdRate,
+        savingsRate: analysisData.monthlySavings.percentage,
+        timeline: analysisData.timeline.months,
+        priority: "medium",
+        autoTransfer: true,
+        emergencyBuffer: true,
+      });
+    }
   };
 
   const calculateMonthlyAmount = () => {
@@ -78,7 +111,7 @@ export default function CustomizePlan() {
   };
 
   const formatUSD = (icpAmount: number) => {
-    return (icpAmount * icpToUsd).toLocaleString(undefined, {
+    return (icpAmount * icpToUsdRate).toLocaleString(undefined, {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     });
@@ -155,7 +188,7 @@ export default function CustomizePlan() {
             {/* ICP Rate Display */}
             <div className="mt-4 flex items-center justify-center space-x-2">
               <span className="text-white/40 text-sm">
-                1 ICP = ${icpToUsd} USD
+                1 ICP = ${icpToUsdRate} USD
               </span>
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
             </div>
@@ -334,7 +367,7 @@ export default function CustomizePlan() {
                   {["low", "medium", "high"].map((priority) => (
                     <button
                       key={priority}
-                      onClick={() => setPlanData({ ...planData, priority })}
+                      onClick={() => setPlanData({ ...planData, priority: priority as "low" | "medium" | "high" })}
                       className={`p-3 rounded-xl border transition-all duration-300 ${
                         planData.priority === priority
                           ? "bg-white/10 border-white/30 text-white"
