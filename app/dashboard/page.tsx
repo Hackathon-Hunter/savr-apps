@@ -28,7 +28,7 @@ import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { useAuth } from "@/hooks/useAuth";
 import { useICPPrice } from "@/contexts/ICPPriceContext";
-import { getUserSavings } from "@/service/icService";
+import { getBalanceByPrincipal, getUserSavings } from "@/service/icService";
 
 // Icon mapping for different saving types
 const getSavingIcon = (savingName: string) => {
@@ -122,18 +122,15 @@ export default function Dashboard() {
     }
   }, [showAccountMenu]);
 
-  // Mock function to fetch ICP balance (replace with actual canister call)
   useEffect(() => {
     const fetchICPBalance = async () => {
-      if (!isAuthenticated) return;
+      if (!actor || !isAuthenticated || !principal) return;
 
       setIsLoadingBalance(true);
       try {
-        // Simulate API call delay
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        // Mock balance - replace with actual balance fetch from ICP ledger
-        const mockBalance = 1247.83; // This should come from the ICP ledger canister
-        setIcpBalance(mockBalance);
+        const balance = await getBalanceByPrincipal(actor, principal);
+
+        setIcpBalance(Number(balance) / 100000000);
       } catch (error) {
         console.error("Failed to fetch ICP balance:", error);
         setIcpBalance(0);
@@ -143,7 +140,7 @@ export default function Dashboard() {
     };
 
     fetchICPBalance();
-  }, [isAuthenticated]);
+  }, [actor, isAuthenticated, principal]);
 
   // Fetch savings data from IC backend
   useEffect(() => {
@@ -154,7 +151,6 @@ export default function Dashboard() {
       setSavingsError("");
 
       try {
-
         // Fetch user savings
         const userSavingsData = await getUserSavings(actor, principal);
 
@@ -323,12 +319,13 @@ export default function Dashboard() {
   };
 
   const refreshBalance = async () => {
+    if (!actor || !isAuthenticated || !principal) return;
+    
     setIsLoadingBalance(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      // Mock refresh - replace with actual balance fetch
-      const mockBalance = 1247.83 + Math.random() * 10 - 5;
-      setIcpBalance(mockBalance);
+      const balance = await getBalanceByPrincipal(actor, principal);
+
+      setIcpBalance(Number(balance) / 100000000);
     } catch (error) {
       console.error("Failed to refresh balance:", error);
     } finally {

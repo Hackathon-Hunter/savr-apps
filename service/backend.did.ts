@@ -115,7 +115,9 @@ export interface UpdateSavingRequest {
   savingsRate: [] | [bigint];
 }
 export interface _SERVICE {
+  getAccountIdFromPrincipal: ActorMethod<[string], string>;
   getAllTransactions: ActorMethod<[], Array<Transaction__1>>;
+  getBalanceByPrincipal: ActorMethod<[string], bigint>;
   getCanisterId: ActorMethod<[], Principal>;
   getOwner: ActorMethod<[], Principal>;
   getSavingTransactions: ActorMethod<[SavingId__1], Array<Transaction__1>>;
@@ -249,6 +251,7 @@ export const idlFactory: IDL.InterfaceFactory = ({ IDL }) => {
   });
   return IDL.Service({
     getAllTransactions: IDL.Func([], [IDL.Vec(Transaction__1)], ["query"]),
+    getBalanceByPrincipal: IDL.Func([IDL.Text], [IDL.Nat64], []),
     getCanisterId: IDL.Func([], [IDL.Principal], ["query"]),
     getOwner: IDL.Func([], [IDL.Principal], ["query"]),
     getSavingTransactions: IDL.Func(

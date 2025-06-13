@@ -52,3 +52,16 @@ export const startSaving = async (
     throw error;
   }
 };
+
+export const getBalanceByPrincipal = async (
+  actor: ActorSubclass<_SERVICE>,
+  principalId: string
+): Promise<bigint> => {
+  try {
+    const result = await actor.getBalanceByPrincipal(principalId);
+    return result;
+  } catch (error) {
+    console.error("Error fetching user balance:", error);
+    throw error;
+  }
+};
