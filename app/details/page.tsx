@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Target,
@@ -67,7 +67,7 @@ interface SavingPlanDetails {
   icon: string;
 }
 
-export default function SavingsPlanDetails() {
+function SavingsPlanDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { actor, isAuthenticated, principal } = useAuth();
@@ -901,3 +901,19 @@ export default function SavingsPlanDetails() {
     </div>
   );
 }
+
+// Export with Suspense boundary
+export default function SavingsPlanDetails() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    }>
+      <SavingsPlanDetailsContent />
+    </Suspense>
+  );
+}
+
+// Force dynamic rendering to handle searchParams
+export const dynamic = 'force-dynamic';

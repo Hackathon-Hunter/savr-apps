@@ -75,7 +75,7 @@ interface DashboardSaving {
   current: number;
   monthlyTarget: number;
   targetDate: string;
-  icon: unknown;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
   color: string;
   progress: number;
   status: string;

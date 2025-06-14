@@ -46,13 +46,18 @@ export default function CustomizePlan() {
   // Update form data when analysis data is available
   useEffect(() => {
     if (analysisData && userInput) {
+      // Get AI's priority recommendation (use the highest priority from recommendations)
+      const aiPriority = analysisData.recommendations.length > 0 
+        ? analysisData.recommendations[0].priority 
+        : "medium";
+
       setPlanData({
         target: userInput.target,
         targetAmount: analysisData.estimatedCost.icp,
         monthlyIncome: userInput.monthlyIncome / icpToUsdRate,
         savingsRate: analysisData.monthlySavings.percentage,
         timeline: analysisData.timeline.months,
-        priority: "medium",
+        priority: aiPriority,
         autoTransfer: true,
         emergencyBuffer: true,
       });
@@ -81,13 +86,18 @@ export default function CustomizePlan() {
   const handleReset = () => {
     // Reset to AI recommendations
     if (analysisData && userInput) {
+      // Get AI's priority recommendation (use the highest priority from recommendations)
+      const aiPriority = analysisData.recommendations.length > 0 
+        ? analysisData.recommendations[0].priority 
+        : "medium";
+
       setPlanData({
         target: userInput.target,
         targetAmount: analysisData.estimatedCost.icp,
         monthlyIncome: userInput.monthlyIncome / icpToUsdRate,
         savingsRate: analysisData.monthlySavings.percentage,
         timeline: analysisData.timeline.months,
-        priority: "medium",
+        priority: aiPriority,
         autoTransfer: true,
         emergencyBuffer: true,
       });
@@ -185,12 +195,17 @@ export default function CustomizePlan() {
             <p className="text-white/60 text-lg font-light tracking-wide max-w-2xl mx-auto">
               Adjust the AI recommendations to match your preferences and goals
             </p>
-            {/* ICP Rate Display */}
-            <div className="mt-4 flex items-center justify-center space-x-2">
-              <span className="text-white/40 text-sm">
-                1 ICP = ${icpToUsdRate} USD
-              </span>
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            {/* AI Status Display */}
+            <div className="mt-4 flex flex-col items-center space-y-2">
+              <div className="flex items-center space-x-2">
+                <span className="text-green-400 text-sm font-medium">✨ Powered by AI Analysis</span>
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-white/40 text-sm">
+                  1 ICP = ${icpToUsdRate} USD
+                </span>
+              </div>
             </div>
           </motion.div>
 
