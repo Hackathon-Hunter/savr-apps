@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Target, DollarSign, Brain, Sparkles, ArrowLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,44 @@ export default function InputTarget() {
   const [monthlyIncome, setMonthlyIncome] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errors, setErrors] = useState({ target: "", income: "" });
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
+
+  // Load initial AI suggestions on page load
+  useEffect(() => {
+    const fetchInitialSuggestions = async () => {
+      setLoadingSuggestions(true);
+      try {
+        const response = await fetch('/api/get-suggestions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ monthlyIncome: 5000 }), // Use average income for initial suggestions
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setAiSuggestions(data.suggestions || []);
+        }
+      } catch (error) {
+        console.error('Error fetching initial suggestions:', error);
+        // Fallback to default suggestions
+        setAiSuggestions([
+          "Emergency fund (6 months)",
+          "New car purchase",
+          "Dream vacation",
+          "House down payment",
+          "Investment account",
+          "Education fund"
+        ]);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    };
+
+    fetchInitialSuggestions();
+  }, []);
 
   const validateForm = () => {
     const newErrors = { target: "", income: "" };
@@ -84,16 +122,53 @@ export default function InputTarget() {
     router.back();
   };
 
-  const targetSuggestions = [
-    "New car",
-    "Dream vacation to Japan",
-    "Emergency fund",
-    "Home down payment",
-    "Wedding expenses",
-    "Business investment",
-    "Education fund",
-    "Retirement savings",
-  ];
+  // Fetch AI-generated suggestions based on income
+  const fetchAISuggestions = async (income: number) => {
+    if (income <= 0) return;
+    
+    setLoadingSuggestions(true);
+    try {
+      const response = await fetch('/api/get-suggestions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ monthlyIncome: income }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAiSuggestions(data.suggestions || []);
+      }
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      // Fallback to default suggestions
+      setAiSuggestions([
+        "Emergency fund",
+        "New car",
+        "Vacation fund", 
+        "Home down payment",
+        "Investment account",
+        "Education fund"
+      ]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  // Fetch suggestions when income changes
+  const handleIncomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMonthlyIncome(value);
+    
+    const incomeNum = Number(value);
+    if (incomeNum > 0) {
+      // Debounce the API call
+      setTimeout(() => {
+        fetchAISuggestions(incomeNum);
+      }, 1000);
+    }
+  };
 
   return (
     <div className="relative min-h-screen w-screen overflow-hidden bg-black">
@@ -186,19 +261,46 @@ export default function InputTarget() {
                   <p className="text-red-400 text-sm mt-2">{errors.target}</p>
                 )}
 
-                {/* Suggestions */}
+                {/* AI Suggestions */}
                 <div className="mt-4">
-                  <p className="text-white/50 text-xs mb-2">Popular targets:</p>
+                  <p className="text-white/50 text-xs mb-2">
+                    {loadingSuggestions ? "AI is thinking..." : 
+                     aiSuggestions.length > 0 && monthlyIncome ? "AI suggests for your income:" :
+                     aiSuggestions.length > 0 ? "AI suggests:" :
+                     "Popular targets:"}
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    {targetSuggestions.slice(0, 4).map((suggestion, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setTarget(suggestion)}
-                        className="text-xs px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/60 hover:text-white hover:border-white/20 transition-all duration-300"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
+                    {loadingSuggestions ? (
+                      // Loading skeleton
+                      Array.from({ length: 4 }, (_, index) => (
+                        <div
+                          key={index}
+                          className="h-6 w-16 bg-white/10 rounded-full animate-pulse"
+                        />
+                      ))
+                    ) : aiSuggestions.length > 0 ? (
+                      // AI generated suggestions
+                      aiSuggestions.slice(0, 4).map((suggestion: string, index: number) => (
+                        <button
+                          key={index}
+                          onClick={() => setTarget(suggestion)}
+                          className="text-xs px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/60 hover:text-white hover:border-white/20 transition-all duration-300"
+                        >
+                          {suggestion}
+                        </button>
+                      ))
+                    ) : (
+                      // Default fallback suggestions
+                      ["Emergency fund", "New car", "Vacation", "Investment"].map((suggestion: string, index: number) => (
+                        <button
+                          key={index}
+                          onClick={() => setTarget(suggestion)}
+                          className="text-xs px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/60 hover:text-white hover:border-white/20 transition-all duration-300"
+                        >
+                          {suggestion}
+                        </button>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
@@ -219,7 +321,7 @@ export default function InputTarget() {
                   <input
                     type="number"
                     value={monthlyIncome}
-                    onChange={(e) => setMonthlyIncome(e.target.value)}
+                    onChange={handleIncomeChange}
                     placeholder="5000"
                     className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all duration-300"
                   />
