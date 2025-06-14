@@ -26,6 +26,12 @@ import { useICPPrice } from "@/contexts/ICPPriceContext";
 import { startSaving } from "@/service/icService";
 import { StartSavingRequest } from "@/service/backend.did";
 
+const PRIORITY_LEVELS = {
+  Low: 1,
+  Medium: 2,
+  High: 3,
+};
+
 export default function AnalysisResults() {
   const router = useRouter();
   const { analysisData, userInput, icpToUsdRate } = useSavingsAnalysis();
@@ -40,7 +46,7 @@ export default function AnalysisResults() {
   // Redirect if no analysis data
   useEffect(() => {
     if (!analysisData || !userInput) {
-      router.push('/input-target');
+      router.push("/input-target");
     }
   }, [analysisData, userInput, router]);
 
@@ -53,7 +59,9 @@ export default function AnalysisResults() {
     );
   }
 
-  const iconMap: { [key: string]: React.ComponentType<{ size?: number; className?: string }> } = {
+  const iconMap: {
+    [key: string]: React.ComponentType<{ size?: number; className?: string }>;
+  } = {
     TrendingUp,
     Calendar,
     CheckCircle,
@@ -79,14 +87,18 @@ export default function AnalysisResults() {
     try {
       // Use simpler timestamp calculation to avoid overflow
       const now = Date.now();
-      const monthsInMs = analysisData.timeline.months * 30 * 24 * 60 * 60 * 1000;
+      const monthsInMs =
+        analysisData.timeline.months * 30 * 24 * 60 * 60 * 1000;
       const deadlineMs = now + monthsInMs;
 
       // Convert to nanoseconds (IC timestamp format)
-      const deadlineNs = BigInt(Math.floor(deadlineMs / 1000)) * BigInt(1000000000);
+      const deadlineNs =
+        BigInt(Math.floor(deadlineMs / 1000)) * BigInt(1000000000);
 
       // Convert ICP amounts to e8s with careful precision handling
-      const targetE8s = BigInt(Math.floor(analysisData.estimatedCost.icp * 100000000));
+      const targetE8s = BigInt(
+        Math.floor(analysisData.estimatedCost.icp * 100000000)
+      );
 
       // Prepare the request
       const startSavingRequest: StartSavingRequest = {
@@ -95,17 +107,16 @@ export default function AnalysisResults() {
         amount: targetE8s,
         totalSaving: BigInt(0),
         deadline: deadlineNs,
-        priorityLevel: [],
+        priorityLevel: [
+          BigInt(
+            PRIORITY_LEVELS[
+              String(analysisData.priority) as keyof typeof PRIORITY_LEVELS
+            ]
+          ),
+        ],
         savingsRate: [],
         isStaking: [],
       };
-
-      console.log("Creating saving plan:", {
-        savingName: startSavingRequest.savingName,
-        principalId: startSavingRequest.principalId,
-        amount: startSavingRequest.amount.toString(),
-        deadline: startSavingRequest.deadline.toString(),
-      });
 
       // Call the IC backend
       const result = await startSaving(actor, startSavingRequest);
@@ -212,8 +223,8 @@ export default function AnalysisResults() {
               AI Analysis Complete
             </h1>
             <p className="text-white/60 text-lg font-light tracking-wide max-w-2xl mx-auto">
-              Based on your target and income, here&apos;s your personalized savings
-              strategy
+              Based on your target and income, here&apos;s your personalized
+              savings strategy
             </p>
             {/* ICP Rate Display */}
             <div className="mt-4 flex items-center justify-center space-x-2">
@@ -278,10 +289,10 @@ export default function AnalysisResults() {
                     />
                     <p className="text-white/60 text-sm mb-1">Monthly Income</p>
                     <p className="text-white text-xl font-semibold">
-                      {formatICP((userInput.monthlyIncome / icpToUsdRate))} ICP
+                      {formatICP(userInput.monthlyIncome / icpToUsdRate)} ICP
                     </p>
                     <p className="text-white/50 text-sm">
-                      ≈ ${formatUSD((userInput.monthlyIncome / icpToUsdRate))} USD
+                      ≈ ${formatICP(userInput.monthlyIncome)} USD
                     </p>
                   </div>
                   <div>

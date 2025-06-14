@@ -20,7 +20,7 @@ Return ONLY a JSON array of strings, nothing else:
 Make them appealing and motivating for a general audience. Examples:
 Emergency fund, Dream vacation, New car, House down payment, Retirement savings, Wedding fund, etc.
 
-Be specific and inspiring. No generic responses.
+Be specific with object and inspiring. No generic responses.
 ` : `
 You are a financial advisor AI. Generate 6 realistic savings targets for someone with a monthly income of $${monthlyIncome} USD.
 

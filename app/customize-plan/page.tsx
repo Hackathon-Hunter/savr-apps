@@ -108,11 +108,6 @@ export default function CustomizePlan() {
     return ((planData.monthlyIncome * planData.savingsRate) / 100).toFixed(2);
   };
 
-  const calculateNewTimeline = () => {
-    const monthlyAmount = Number.parseFloat(calculateMonthlyAmount());
-    return Math.ceil(planData.targetAmount / monthlyAmount);
-  };
-
   const formatICP = (amount: number) => {
     return amount.toLocaleString(undefined, {
       minimumFractionDigits: 2,
@@ -264,7 +259,7 @@ export default function CustomizePlan() {
                     />
                     <p className="text-white/60 text-sm mb-1">Timeline</p>
                     <p className="text-white text-lg font-semibold">
-                      {calculateNewTimeline()} months
+                      {planData.timeline} months
                     </p>
                   </div>
                 </div>

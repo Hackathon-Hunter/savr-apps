@@ -23,6 +23,7 @@ export interface SavingsAnalysis {
     usd: number;
     percentage: number;
   };
+  priority: number;
 }
 
 export async function analyzeSavingsGoal(
@@ -57,7 +58,8 @@ Return JSON with exactly this structure:
     {"title": "string", "description": "string", "priority": "high|medium|low"},
     {"title": "string", "description": "string", "priority": "high|medium|low"}
   ],
-  "insights": ["string", "string", "string", "string"]
+  "insights": ["string", "string", "string", "string"],
+  "priority": number 1, 2, or 3
 }
 `;
 
@@ -135,8 +137,9 @@ Return JSON with exactly this structure:
       monthlySavings: { 
         icp: savingsIcp, 
         usd: savingsUsd, 
-        percentage: data.isImmediate ? 0.01 : data.savingsPercentage 
+        percentage: data.isImmediate ? 0.01 : data.savingsPercentage
       },
+      priority: data.priority
     };
 
   } catch (error) {
@@ -187,5 +190,6 @@ function getSimpleFallback(target: string, monthlyIncomeUsd: number, icpToUsdRat
     estimatedCost: { icp: costIcp, usd: costUsd },
     timeline: { months: isSmall ? 0 : 12, targetDate: isSmall ? "Now" : "Next year" },
     monthlySavings: { icp: costIcp, usd: costUsd, percentage: isSmall ? 0.01 : 15 },
+    priority: 1
   };
 } 
