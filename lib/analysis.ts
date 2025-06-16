@@ -54,9 +54,8 @@ Return JSON with exactly this structure:
   "timelineMonths": number,
   "isImmediate": boolean,
   "recommendations": [
-    {"title": "string", "description": "string", "priority": "high|medium|low"},
-    {"title": "string", "description": "string", "priority": "high|medium|low"},
-    {"title": "string", "description": "string", "priority": "high|medium|low"}
+    {"title": "Optimal Savings Rate", "description": "string", "priority": "high|medium|low"},
+    {"title": "Timeline Prediction", "description": "string", "priority": "high|medium|low"},
   ],
   "insights": ["string", "string", "string", "string"],
   "priority": number 1, 2, or 3
@@ -102,7 +101,7 @@ Return JSON with exactly this structure:
           amountUsd = `≈ $${savingsUsd.toFixed(0)}/month`;
           icon = "TrendingUp";
         }
-      } else if (index === 1) { // Second recommendation
+      } else { // Second recommendation
         if (data.isImmediate) {
           amount = "Daily tracking";
           icon = "TrendingUp";
@@ -110,10 +109,6 @@ Return JSON with exactly this structure:
           amount = data.timelineMonths > 0 ? targetDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : "Now";
           icon = "Calendar";
         }
-      } else { // Third recommendation
-        amount = data.isImmediate ? "Stay mindful" : `${(monthlyIncomeIcp * 3).toFixed(2)} ICP`;
-        amountUsd = data.isImmediate ? "" : `≈ $${(monthlyIncomeUsd * 3).toFixed(0)}`;
-        icon = "CheckCircle";
       }
       
       return {

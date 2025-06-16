@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Target, DollarSign, Brain, Sparkles, ArrowLeft, ChevronRight } from "lucide-react";
+import {
+  Target,
+  DollarSign,
+  Brain,
+  Sparkles,
+  ArrowLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
@@ -23,10 +30,10 @@ export default function InputTarget() {
     const fetchInitialSuggestions = async () => {
       setLoadingSuggestions(true);
       try {
-        const response = await fetch('/api/get-suggestions', {
-          method: 'POST',
+        const response = await fetch("/api/get-suggestions", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({ monthlyIncome: 5000 }), // Use average income for initial suggestions
         });
@@ -36,7 +43,7 @@ export default function InputTarget() {
           setAiSuggestions(data.suggestions || []);
         }
       } catch (error) {
-        console.error('Error fetching initial suggestions:', error);
+        console.error("Error fetching initial suggestions:", error);
         // Fallback to default suggestions
         setAiSuggestions([
           "Emergency fund (6 months)",
@@ -44,7 +51,7 @@ export default function InputTarget() {
           "Dream vacation",
           "House down payment",
           "Investment account",
-          "Education fund"
+          "Education fund",
         ]);
       } finally {
         setLoadingSuggestions(false);
@@ -79,7 +86,7 @@ export default function InputTarget() {
     if (!validateForm()) return;
 
     setIsAnalyzing(true);
-    
+
     try {
       // Store user input
       const monthlyIncomeUsd = Number(monthlyIncome);
@@ -89,10 +96,10 @@ export default function InputTarget() {
       });
 
       // Get AI analysis from ChatGPT via API
-      const response = await fetch('/api/analyze-savings', {
-        method: 'POST',
+      const response = await fetch("/api/analyze-savings", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           target,
@@ -102,7 +109,7 @@ export default function InputTarget() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to analyze savings goal');
+        throw new Error("Failed to analyze savings goal");
       }
 
       const analysis = await response.json();
@@ -114,7 +121,9 @@ export default function InputTarget() {
       console.error("Error during analysis:", error);
       setIsAnalyzing(false);
       // You could show an error message to the user here
-      alert("Sorry, there was an error analyzing your savings goal. Please try again.");
+      alert(
+        "Sorry, there was an error analyzing your savings goal. Please try again."
+      );
     }
   };
 
@@ -125,13 +134,13 @@ export default function InputTarget() {
   // Fetch AI-generated suggestions based on income
   const fetchAISuggestions = async (income: number) => {
     if (income <= 0) return;
-    
+
     setLoadingSuggestions(true);
     try {
-      const response = await fetch('/api/get-suggestions', {
-        method: 'POST',
+      const response = await fetch("/api/get-suggestions", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ monthlyIncome: income }),
       });
@@ -141,15 +150,15 @@ export default function InputTarget() {
         setAiSuggestions(data.suggestions || []);
       }
     } catch (error) {
-      console.error('Error fetching suggestions:', error);
+      console.error("Error fetching suggestions:", error);
       // Fallback to default suggestions
       setAiSuggestions([
         "Emergency fund",
         "New car",
-        "Vacation fund", 
+        "Vacation fund",
         "Home down payment",
         "Investment account",
-        "Education fund"
+        "Education fund",
       ]);
     } finally {
       setLoadingSuggestions(false);
@@ -160,14 +169,10 @@ export default function InputTarget() {
   const handleIncomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setMonthlyIncome(value);
-    
-    const incomeNum = Number(value);
-    if (incomeNum > 0) {
-      // Debounce the API call
-      setTimeout(() => {
-        fetchAISuggestions(incomeNum);
-      }, 1000);
-    }
+  };
+
+  const handleOnBlurIncome = () => {
+    fetchAISuggestions(Number(monthlyIncome));
   };
 
   return (
@@ -242,6 +247,33 @@ export default function InputTarget() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="space-y-8"
           >
+            {/* Monthly Income Input */}
+            <div className="relative group">
+              <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500" />
+              <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-500">
+                <label className="text-white/80 text-sm font-medium mb-3 flex items-center space-x-2">
+                  <DollarSign size={16} />
+                  <span>Monthly Income</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/60">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    value={monthlyIncome}
+                    onChange={handleIncomeChange}
+                    onBlur={handleOnBlurIncome}
+                    placeholder="5000"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all duration-300"
+                  />
+                </div>
+                {errors.income && (
+                  <p className="text-red-400 text-sm mt-2">{errors.income}</p>
+                )}
+              </div>
+            </div>
+
             {/* Target Input */}
             <div className="relative group">
               <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500" />
@@ -264,71 +296,53 @@ export default function InputTarget() {
                 {/* AI Suggestions */}
                 <div className="mt-4">
                   <p className="text-white/50 text-xs mb-2">
-                    {loadingSuggestions ? "AI is thinking..." : 
-                     aiSuggestions.length > 0 && monthlyIncome ? "AI suggests for your income:" :
-                     aiSuggestions.length > 0 ? "AI suggests:" :
-                     "Popular targets:"}
+                    {loadingSuggestions
+                      ? "AI is thinking..."
+                      : aiSuggestions.length > 0 && monthlyIncome
+                      ? "AI suggests for your income:"
+                      : aiSuggestions.length > 0
+                      ? "AI suggests:"
+                      : "Popular targets:"}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {loadingSuggestions ? (
-                      // Loading skeleton
-                      Array.from({ length: 4 }, (_, index) => (
-                        <div
-                          key={index}
-                          className="h-6 w-16 bg-white/10 rounded-full animate-pulse"
-                        />
-                      ))
-                    ) : aiSuggestions.length > 0 ? (
-                      // AI generated suggestions
-                      aiSuggestions.slice(0, 4).map((suggestion: string, index: number) => (
-                        <button
-                          key={index}
-                          onClick={() => setTarget(suggestion)}
-                          className="text-xs px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/60 hover:text-white hover:border-white/20 transition-all duration-300"
-                        >
-                          {suggestion}
-                        </button>
-                      ))
-                    ) : (
-                      // Default fallback suggestions
-                      ["Emergency fund", "New car", "Vacation", "Investment"].map((suggestion: string, index: number) => (
-                        <button
-                          key={index}
-                          onClick={() => setTarget(suggestion)}
-                          className="text-xs px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/60 hover:text-white hover:border-white/20 transition-all duration-300"
-                        >
-                          {suggestion}
-                        </button>
-                      ))
-                    )}
+                    {loadingSuggestions
+                      ? // Loading skeleton
+                        Array.from({ length: 4 }, (_, index) => (
+                          <div
+                            key={index}
+                            className="h-6 w-16 bg-white/10 rounded-full animate-pulse"
+                          />
+                        ))
+                      : aiSuggestions.length > 0
+                      ? // AI generated suggestions
+                        aiSuggestions
+                          .slice(0, 4)
+                          .map((suggestion: string, index: number) => (
+                            <button
+                              key={index}
+                              onClick={() => setTarget(suggestion)}
+                              className="text-xs px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/60 hover:text-white hover:border-white/20 transition-all duration-300"
+                            >
+                              {suggestion}
+                            </button>
+                          ))
+                      : // Default fallback suggestions
+                        [
+                          "Emergency fund",
+                          "New car",
+                          "Vacation",
+                          "Investment",
+                        ].map((suggestion: string, index: number) => (
+                          <button
+                            key={index}
+                            onClick={() => setTarget(suggestion)}
+                            className="text-xs px-3 py-1 bg-white/5 border border-white/10 rounded-full text-white/60 hover:text-white hover:border-white/20 transition-all duration-300"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Monthly Income Input */}
-            <div className="relative group">
-              <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-500" />
-              <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-500">
-                <label className="text-white/80 text-sm font-medium mb-3 flex items-center space-x-2">
-                  <DollarSign size={16} />
-                  <span>Monthly Income</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/60">
-                    $
-                  </span>
-                  <input
-                    type="number"
-                    value={monthlyIncome}
-                    onChange={handleIncomeChange}
-                    placeholder="5000"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all duration-300"
-                  />
-                </div>
-                {errors.income && (
-                  <p className="text-red-400 text-sm mt-2">{errors.income}</p>
-                )}
               </div>
             </div>
 
