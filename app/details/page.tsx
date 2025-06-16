@@ -17,13 +17,15 @@ import {
   RefreshCw,
   Loader,
   TrendingDown,
+  Minus,
+  AlertTriangle,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { useAuth } from "@/hooks/useAuth";
 import { useICPPrice } from "@/contexts/ICPPriceContext";
-import { getUserSavings } from "@/service/icService";
+import { getUserSavings, topUpSaving, withdrawSaving } from "@/service/icService";
 
 // Icon mapping for different saving types
 const getSavingIcon = (savingName: string) => {
@@ -84,8 +86,36 @@ function SavingsPlanDetailsContent() {
   const [topUpErrors, setTopUpErrors] = useState("");
   const [isProcessingTopUp, setIsProcessingTopUp] = useState(false);
 
+  // Withdraw state management
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [showWithdrawConfirmation, setShowWithdrawConfirmation] = useState(false);
+  const [withdrawErrors, setWithdrawErrors] = useState("");
+  const [isProcessingWithdraw, setIsProcessingWithdraw] = useState(false);
+  const [isForceWithdraw, setIsForceWithdraw] = useState(false);
+
+  // Constants for withdrawal
+  const NORMAL_ADMIN_FEE = 0.02; // 2%
+  const PENALTY_ADMIN_FEE = 0.05; // 5% for early withdrawal
+  const CURRENT_DATE = new Date();
+
   // Get saving ID from URL params or use default
   const savingId = searchParams.get("id") || "1";
+
+  // Check if withdrawal is eligible (current month matches target month)
+  const isWithdrawalEligible = (targetDate: string) => {
+    const target = new Date(targetDate);
+    return (
+      CURRENT_DATE.getMonth() === target.getMonth() &&
+      CURRENT_DATE.getFullYear() === target.getFullYear()
+    );
+  };
+
+  // Calculate admin fee based on withdrawal type
+  const calculateAdminFee = (amount: number, isForce: boolean) => {
+    const feeRate = isForce ? PENALTY_ADMIN_FEE : NORMAL_ADMIN_FEE;
+    return amount * feeRate;
+  };
 
   // Fetch saving plan details
   useEffect(() => {
@@ -119,7 +149,7 @@ function SavingsPlanDetailsContent() {
         const createdDate = new Date(Number(targetSaving.createdAt) / 1000000);
         const totalMonths = Math.ceil(
           (deadlineDate.getTime() - createdDate.getTime()) /
-            (1000 * 60 * 60 * 24 * 30)
+          (1000 * 60 * 60 * 24 * 30)
         );
         const elapsedMonths = Math.ceil(
           (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
@@ -196,6 +226,14 @@ function SavingsPlanDetailsContent() {
     setShowTopUpModal(true);
   };
 
+  const handleWithdraw = () => {
+    if (!savingPlan) return;
+
+    const eligible = isWithdrawalEligible(savingPlan.targetDate);
+    setIsForceWithdraw(!eligible);
+    setShowWithdrawModal(true);
+  };
+
   const validateAmount = () => {
     if (!topUpAmount.trim()) {
       setTopUpErrors("Please enter an amount");
@@ -213,10 +251,33 @@ function SavingsPlanDetailsContent() {
     return true;
   };
 
+  const validateWithdrawAmount = () => {
+    if (!withdrawAmount.trim()) {
+      setWithdrawErrors("Please enter an amount");
+      return false;
+    }
+    if (isNaN(Number(withdrawAmount)) || Number(withdrawAmount) <= 0) {
+      setWithdrawErrors("Please enter a valid amount");
+      return false;
+    }
+    if (savingPlan && Number(withdrawAmount) > savingPlan.currentSaved) {
+      setWithdrawErrors("Amount exceeds available savings");
+      return false;
+    }
+    setWithdrawErrors("");
+    return true;
+  };
+
   const handleConfirmTopUp = () => {
     if (!validateAmount()) return;
     setShowTopUpModal(false);
     setShowConfirmation(true);
+  };
+
+  const handleConfirmWithdraw = () => {
+    if (!validateWithdrawAmount()) return;
+    setShowWithdrawModal(false);
+    setShowWithdrawConfirmation(true);
   };
 
   const handleFinalConfirm = async () => {
@@ -224,15 +285,22 @@ function SavingsPlanDetailsContent() {
 
     setIsProcessingTopUp(true);
     try {
-      // Here you would implement the actual top-up logic
-      // For now, we'll simulate it
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      if (!actor || !isAuthenticated || !principal) return;
+
+      const nominal = BigInt(
+        Math.floor(Number(topUpAmount) * 100000000)
+      )
+
+      await topUpSaving(actor, {
+        amount: nominal,
+        savingId: BigInt(savingId),
+        principalId: principal
+      })
 
       console.log(
         `Transferring ${topUpAmount} ICP to saving plan ${savingPlan.id}`
       );
 
-      // Update the saving plan with new amount
       const newCurrentSaved = savingPlan.currentSaved + Number(topUpAmount);
       setSavingPlan({
         ...savingPlan,
@@ -242,7 +310,6 @@ function SavingsPlanDetailsContent() {
       setShowConfirmation(false);
       setTopUpAmount("");
 
-      // Show success message or confetti if goal is reached
       if (newCurrentSaved >= savingPlan.totalAmount) {
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 5000);
@@ -255,11 +322,57 @@ function SavingsPlanDetailsContent() {
     }
   };
 
+  const handleFinalWithdrawConfirm = async () => {
+    if (!savingPlan) return;
+
+    setIsProcessingWithdraw(true);
+    try {
+      if (!actor || !isAuthenticated || !principal) return;
+
+      await withdrawSaving(actor, BigInt(savingId))
+
+      const withdrawalAmount = Number(withdrawAmount);
+      const adminFee = calculateAdminFee(withdrawalAmount, isForceWithdraw);
+      const netAmount = withdrawalAmount - adminFee;
+
+      console.log(
+        `Withdrawing ${withdrawAmount} ICP from saving plan ${savingPlan.id}`
+      );
+      console.log(`Admin fee: ${adminFee.toFixed(8)} ICP`);
+      console.log(`Net amount received: ${netAmount.toFixed(8)} ICP`);
+
+      // Update the saving plan with new amount
+      const newCurrentSaved = Math.max(0, savingPlan.currentSaved - withdrawalAmount);
+      setSavingPlan({
+        ...savingPlan,
+        currentSaved: newCurrentSaved,
+      });
+
+      setShowWithdrawConfirmation(false);
+      setWithdrawAmount("");
+      setIsForceWithdraw(false);
+
+    } catch (error) {
+      console.error("Failed to process withdrawal:", error);
+      setWithdrawErrors("Failed to process withdrawal. Please try again.");
+    } finally {
+      setIsProcessingWithdraw(false);
+    }
+  };
+
   const handleCancel = () => {
     setShowTopUpModal(false);
     setShowConfirmation(false);
     setTopUpAmount("");
     setTopUpErrors("");
+  };
+
+  const handleWithdrawCancel = () => {
+    setShowWithdrawModal(false);
+    setShowWithdrawConfirmation(false);
+    setWithdrawAmount("");
+    setWithdrawErrors("");
+    setIsForceWithdraw(false);
   };
 
   const refreshData = async () => {
@@ -279,10 +392,10 @@ function SavingsPlanDetailsContent() {
         setSavingPlan((prev) =>
           prev
             ? {
-                ...prev,
-                currentSaved: currentAmount,
-                totalAmount: targetAmount,
-              }
+              ...prev,
+              currentSaved: currentAmount,
+              totalAmount: targetAmount,
+            }
             : null
         );
       }
@@ -348,6 +461,8 @@ function SavingsPlanDetailsContent() {
     Math.round((savingPlan.currentSaved / savingPlan.totalAmount) * 100),
     100
   );
+
+  const isEligibleForNormalWithdraw = isWithdrawalEligible(savingPlan.targetDate);
 
   return (
     <div className="relative min-h-screen w-screen overflow-hidden bg-black">
@@ -477,13 +592,12 @@ function SavingsPlanDetailsContent() {
             {/* Status Badge */}
             <div className="mt-4 flex items-center justify-center space-x-4">
               <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  savingPlan.status === "Active"
-                    ? "bg-blue-500/20 border border-blue-500/30 text-blue-400"
-                    : savingPlan.status === "Completed"
+                className={`px-3 py-1 rounded-full text-sm font-medium ${savingPlan.status === "Active"
+                  ? "bg-blue-500/20 border border-blue-500/30 text-blue-400"
+                  : savingPlan.status === "Completed"
                     ? "bg-green-500/20 border border-green-500/30 text-green-400"
                     : "bg-red-500/20 border border-red-500/30 text-red-400"
-                }`}
+                  }`}
               >
                 {savingPlan.status}
               </span>
@@ -493,6 +607,16 @@ function SavingsPlanDetailsContent() {
                   Staking Active
                 </span>
               )}
+
+              {/* Withdrawal Eligibility Badge */}
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${isEligibleForNormalWithdraw
+                  ? "bg-green-500/20 border border-green-500/30 text-green-400"
+                  : "bg-orange-500/20 border border-orange-500/30 text-orange-400"
+                  }`}
+              >
+                {isEligibleForNormalWithdraw ? "Withdrawal Available" : "Early Withdrawal Only"}
+              </span>
             </div>
 
             {/* ICP Rate Display */}
@@ -508,11 +632,10 @@ function SavingsPlanDetailsContent() {
                     1 ICP = ${priceData.price.toFixed(2)} USD
                   </span>
                   <div
-                    className={`flex items-center space-x-1 text-xs ${
-                      priceData.changePercent24h >= 0
-                        ? "text-green-400"
-                        : "text-red-400"
-                    }`}
+                    className={`flex items-center space-x-1 text-xs ${priceData.changePercent24h >= 0
+                      ? "text-green-400"
+                      : "text-red-400"
+                      }`}
                   >
                     {priceData.changePercent24h >= 0 ? (
                       <TrendingUp size={12} />
@@ -678,44 +801,91 @@ function SavingsPlanDetailsContent() {
             </div>
           </motion.div>
 
-          {/* Top Up Section - Only show for active plans */}
-          {savingPlan.status === "Active" && (
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-              className="mb-12"
-            >
-              <h2 className="text-2xl font-bold text-white mb-8 text-center">
-                Add to Savings
-              </h2>
+          {/* Action Buttons Section - Only show for active plans */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="mb-12"
+          >
+            <h2 className="text-2xl font-bold text-white mb-8 text-center">
+              Manage Your Savings
+            </h2>
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Top Up Section */}
               <div className="relative group">
                 <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-50" />
                 <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
-                  <Plus size={32} className="text-white/80 mx-auto mb-4" />
+                  <Plus size={32} className="text-green-400 mx-auto mb-4" />
                   <h3 className="text-white text-xl font-semibold mb-2">
-                    Top Up Your Savings
+                    Add to Savings
                   </h3>
-                  <p className="text-white/70 max-w-2xl mx-auto mb-8">
-                    Add money to your savings plan anytime to reach your goal
-                    faster
+                  <p className="text-white/70 mb-6">
+                    Contribute more to reach your goal faster
                   </p>
                   <ShimmerButton
-                    className="px-8 py-4 text-lg font-medium mx-auto"
+                    className="px-6 py-3 text-base font-medium w-full"
                     onClick={handleTopUp}
-                    background="#1f2937"
+                    background="#16a34a"
                     shimmerColor="#ffffff"
                     shimmerSize="0.15em"
                   >
-                    <div className="flex items-center space-x-3">
-                      <Plus size={20} className="text-white" />
+                    <div className="flex items-center justify-center space-x-2">
+                      <Plus size={18} className="text-white" />
                       <span className="text-white">Add Money</span>
                     </div>
                   </ShimmerButton>
                 </div>
               </div>
-            </motion.div>
-          )}
+
+              {/* Withdraw Section */}
+              <div className="relative group">
+                <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-50" />
+                <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
+                  <Minus size={32} className="text-blue-400 mx-auto mb-4" />
+                  <h3 className="text-white text-xl font-semibold mb-2">
+                    Withdraw Funds
+                  </h3>
+                  <p className="text-white/70 mb-2">
+                    {isEligibleForNormalWithdraw
+                      ? "Withdraw without penalty"
+                      : "Early withdrawal available with penalty"
+                    }
+                  </p>
+
+                  {/* Withdrawal Info */}
+                  <div className="mb-6">
+                    {isEligibleForNormalWithdraw ? (
+                      <div className="flex items-center justify-center space-x-2 text-green-400 text-sm">
+                        <CheckCircle size={16} />
+                        <span>Normal withdrawal (2% admin fee)</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center space-x-2 text-orange-400 text-sm">
+                        <AlertTriangle size={16} />
+                        <span>Early withdrawal (5% admin fee)</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <ShimmerButton
+                    className="px-6 py-3 text-base font-medium w-full"
+                    onClick={handleWithdraw}
+                    background={isEligibleForNormalWithdraw ? "#3b82f6" : "#f97316"}
+                    shimmerColor="#ffffff"
+                    shimmerSize="0.15em"
+                  >
+                    <div className="flex items-center justify-center space-x-2">
+                      <Minus size={18} className="text-white" />
+                      <span className="text-white">
+                        {isEligibleForNormalWithdraw ? "Withdraw" : "Force Withdraw"}
+                      </span>
+                    </div>
+                  </ShimmerButton>
+                </div>
+              </div>
+            </div>
+          </motion.div>
 
           {/* Motivation Card */}
           <motion.div
@@ -814,9 +984,9 @@ function SavingsPlanDetailsContent() {
                 <ShimmerButton
                   className="flex-1 py-3"
                   onClick={handleConfirmTopUp}
-                  background="rgba(255, 255, 255, 0.1)"
+                  background="#1f2937"
                   shimmerColor="#ffffff"
-                  shimmerSize="0.1em"
+                  shimmerSize="0.05em"
                 >
                   <span className="text-white">Continue</span>
                 </ShimmerButton>
@@ -826,7 +996,142 @@ function SavingsPlanDetailsContent() {
         )}
       </AnimatePresence>
 
-      {/* Confirmation Modal */}
+      {/* Withdraw Modal */}
+      <AnimatePresence>
+        {showWithdrawModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl p-8 w-full max-w-md"
+            >
+              <button
+                onClick={handleWithdrawCancel}
+                className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors duration-300"
+              >
+                <X size={20} />
+              </button>
+
+              <h3 className="text-white text-2xl font-bold mb-2 text-center">
+                {isForceWithdraw ? "Force Withdraw" : "Withdraw Funds"}
+              </h3>
+
+              {/* Warning for force withdrawal */}
+              {isForceWithdraw && (
+                <div className="mb-6 p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl">
+                  <div className="flex items-start space-x-3">
+                    <AlertTriangle size={20} className="text-orange-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-orange-400 font-medium text-sm mb-1">Early Withdrawal Penalty</h4>
+                      <p className="text-orange-200 text-xs">
+                        Withdrawing before {savingPlan?.targetDate} incurs a 5% admin fee instead of the normal 2% fee.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-6">
+                <label className="block text-white/80 text-sm font-medium mb-3">
+                  Amount to Withdraw (ICP)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.01"
+                    max={savingPlan?.currentSaved}
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    placeholder={`Max: ${formatICP(savingPlan?.currentSaved || 0)}`}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all duration-300"
+                  />
+                </div>
+
+                {/* Amount calculations */}
+                {withdrawAmount && Number(withdrawAmount) > 0 && (
+                  <div className="mt-3 p-3 bg-white/5 rounded-lg space-y-2 text-sm">
+                    <div className="flex justify-between text-white/70">
+                      <span>Withdrawal Amount:</span>
+                      <span>{withdrawAmount} ICP</span>
+                    </div>
+                    <div className="flex justify-between text-white/70">
+                      <span>Admin Fee ({isForceWithdraw ? '5%' : '2%'}):</span>
+                      <span>-{formatICP(calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP</span>
+                    </div>
+                    <div className="border-t border-white/10 pt-2">
+                      <div className="flex justify-between text-white font-medium">
+                        <span>You'll Receive:</span>
+                        <span>{formatICP(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP</span>
+                      </div>
+                      <div className="flex justify-between text-white/50 text-xs">
+                        <span>≈ USD:</span>
+                        <span>${formatUSD(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {withdrawErrors && (
+                  <p className="text-red-400 text-sm mt-2">{withdrawErrors}</p>
+                )}
+              </div>
+
+              {/* Quick amount buttons */}
+              <div className="mb-6">
+                <p className="text-white/60 text-sm mb-3">Quick amounts:</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => setWithdrawAmount((savingPlan?.currentSaved * 0.25 || 0).toFixed(8))}
+                    className="bg-white/5 border border-white/10 rounded-lg py-2 text-white/80 text-sm hover:bg-white/10 transition-all duration-300"
+                  >
+                    25%
+                  </button>
+                  <button
+                    onClick={() => setWithdrawAmount((savingPlan?.currentSaved * 0.5 || 0).toFixed(8))}
+                    className="bg-white/5 border border-white/10 rounded-lg py-2 text-white/80 text-sm hover:bg-white/10 transition-all duration-300"
+                  >
+                    50%
+                  </button>
+                  <button
+                    onClick={() => setWithdrawAmount((savingPlan?.currentSaved || 0).toFixed(8))}
+                    className="bg-white/5 border border-white/10 rounded-lg py-2 text-white/80 text-sm hover:bg-white/10 transition-all duration-300"
+                  >
+                    Max
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex space-x-4">
+                <button
+                  onClick={handleWithdrawCancel}
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 text-white/80 hover:bg-white/10 transition-all duration-300"
+                >
+                  Cancel
+                </button>
+                <ShimmerButton
+                  className="flex-1 py-3"
+                  onClick={handleConfirmWithdraw}
+                  background={isForceWithdraw ? "rgba(249, 115, 22, 0.3)" : "rgba(59, 130, 246, 0.3)"}
+                  shimmerColor="#ffffff"
+                  shimmerSize="0.1em"
+                >
+                  <span className="text-white">
+                    {isForceWithdraw ? "Force Withdraw" : "Withdraw"}
+                  </span>
+                </ShimmerButton>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Top-Up Confirmation Modal */}
       <AnimatePresence>
         {showConfirmation && (
           <motion.div
@@ -888,6 +1193,100 @@ function SavingsPlanDetailsContent() {
                     shimmerSize="0.1em"
                   >
                     <span className="text-white">Confirm</span>
+                  </ShimmerButton>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Withdraw Confirmation Modal */}
+      <AnimatePresence>
+        {showWithdrawConfirmation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl p-8 w-full max-w-md"
+            >
+              <div className="text-center mb-6">
+                {isProcessingWithdraw ? (
+                  <Loader
+                    size={48}
+                    className="text-white mx-auto mb-4 animate-spin"
+                  />
+                ) : (
+                  <div className="mb-4">
+                    {isForceWithdraw ? (
+                      <AlertTriangle size={48} className="text-orange-400 mx-auto" />
+                    ) : (
+                      <CheckCircle size={48} className="text-blue-400 mx-auto" />
+                    )}
+                  </div>
+                )}
+                <h3 className="text-white text-2xl font-bold mb-2">
+                  {isProcessingWithdraw ? "Processing Withdrawal..." : "Confirm Withdrawal"}
+                </h3>
+
+                {!isProcessingWithdraw && (
+                  <div className="space-y-3">
+                    <div className="p-4 bg-white/5 rounded-xl text-left space-y-2">
+                      <div className="flex justify-between text-white/70 text-sm">
+                        <span>Withdrawal Amount:</span>
+                        <span className="text-white">{withdrawAmount} ICP</span>
+                      </div>
+                      <div className="flex justify-between text-white/70 text-sm">
+                        <span>Admin Fee ({isForceWithdraw ? '5%' : '2%'}):</span>
+                        <span className="text-red-400">-{formatICP(calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP</span>
+                      </div>
+                      <div className="border-t border-white/10 pt-2">
+                        <div className="flex justify-between text-white font-medium">
+                          <span>You'll Receive:</span>
+                          <span className="text-green-400">
+                            {formatICP(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-white/50 text-xs">
+                          <span>≈ USD:</span>
+                          <span>${formatUSD(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isForceWithdraw && (
+                      <p className="text-orange-400 text-sm">
+                        ⚠️ Early withdrawal penalty applied due to withdrawal before target date
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {!isProcessingWithdraw && (
+                <div className="flex space-x-4">
+                  <button
+                    onClick={handleWithdrawCancel}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 text-white/80 hover:bg-white/10 transition-all duration-300"
+                  >
+                    Cancel
+                  </button>
+                  <ShimmerButton
+                    className="flex-1 py-3"
+                    onClick={handleFinalWithdrawConfirm}
+                    background={isForceWithdraw ? "rgba(249, 115, 22, 0.3)" : "rgba(59, 130, 246, 0.3)"}
+                    shimmerColor="#ffffff"
+                    shimmerSize="0.1em"
+                  >
+                    <span className="text-white">
+                      {isForceWithdraw ? "Confirm Force Withdrawal" : "Confirm Withdrawal"}
+                    </span>
                   </ShimmerButton>
                 </div>
               )}
