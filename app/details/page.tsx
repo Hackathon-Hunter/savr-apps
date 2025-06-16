@@ -351,7 +351,6 @@ function SavingsPlanDetailsContent() {
       setShowWithdrawConfirmation(false);
       setWithdrawAmount("");
       setIsForceWithdraw(false);
-
     } catch (error) {
       console.error("Failed to process withdrawal:", error);
       setWithdrawErrors("Failed to process withdrawal. Please try again.");
@@ -1304,11 +1303,13 @@ function SavingsPlanDetailsContent() {
 // Export with Suspense boundary
 export default function SavingsPlanDetails() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <div className="text-white text-xl">Loading...</div>
+        </div>
+      }
+    >
       <SavingsPlanDetailsContent />
     </Suspense>
   );

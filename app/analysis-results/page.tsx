@@ -26,12 +26,6 @@ import { useICPPrice } from "@/contexts/ICPPriceContext";
 import { startSaving } from "@/service/icService";
 import { StartSavingRequest } from "@/service/backend.did";
 
-const PRIORITY_LEVELS = {
-  Low: 1,
-  Medium: 2,
-  High: 3,
-};
-
 export default function AnalysisResults() {
   const router = useRouter();
   const { analysisData, userInput, icpToUsdRate } = useSavingsAnalysis();
@@ -107,13 +101,7 @@ export default function AnalysisResults() {
         amount: targetE8s,
         totalSaving: BigInt(0),
         deadline: deadlineNs,
-        priorityLevel: [
-          BigInt(
-            PRIORITY_LEVELS[
-              String(analysisData.priority) as keyof typeof PRIORITY_LEVELS
-            ]
-          ),
-        ],
+        priorityLevel: [BigInt(analysisData.priority)],
         savingsRate: [],
         isStaking: [],
       };
@@ -323,7 +311,7 @@ export default function AnalysisResults() {
             <h2 className="text-2xl font-bold text-white mb-8 text-center">
               AI Recommendations
             </h2>
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 gap-6">
               {recommendations.map((rec, index) => (
                 <motion.div
                   key={index}
