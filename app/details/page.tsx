@@ -1131,7 +1131,7 @@ function SavingsPlanDetailsContent() {
                     </div>
                     <div className="border-t border-white/10 pt-2">
                       <div className="flex justify-between text-white font-medium">
-                        <span>You'll Receive:</span>
+                        <span>You&apos;ll Receive:</span>
                         <span>
                           {formatICP(
                             Number(withdrawAmount) -
@@ -1366,7 +1366,7 @@ function SavingsPlanDetailsContent() {
                       </div>
                       <div className="border-t border-white/10 pt-2">
                         <div className="flex justify-between text-white font-medium">
-                          <span>You'll Receive:</span>
+                          <span>You&apos;ll Receive:</span>
                           <span className="text-green-400">
                             {formatICP(
                               Number(withdrawAmount) -
