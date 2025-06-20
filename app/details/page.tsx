@@ -19,13 +19,14 @@ import {
   TrendingDown,
   Minus,
   AlertTriangle,
+  Shield,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { useAuth } from "@/hooks/useAuth";
 import { useICPPrice } from "@/contexts/ICPPriceContext";
-import { getUserSavings, topUpSaving, withdrawSaving } from "@/service/icService";
+import { getUserSavings, topUpSaving, withdrawSaving, stakeICP, unstakeICP, getStakingInfo } from "@/service/icService";
 
 // Icon mapping for different saving types
 const getSavingIcon = (savingName: string) => {
@@ -85,6 +86,12 @@ function SavingsPlanDetailsContent() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [topUpErrors, setTopUpErrors] = useState("");
   const [isProcessingTopUp, setIsProcessingTopUp] = useState(false);
+
+  // New staking-related state
+  const [isStaking, setIsStaking] = useState(false);
+  const [stakingProgress, setStakingProgress] = useState("");
+  const [isUnstaking, setIsUnstaking] = useState(false);
+  const [unstakingProgress, setUnstakingProgress] = useState("");
 
   // Withdraw state management
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -284,23 +291,54 @@ function SavingsPlanDetailsContent() {
     if (!savingPlan) return;
 
     setIsProcessingTopUp(true);
+    setStakingProgress("Initiating transfer...");
+
     try {
       if (!actor || !isAuthenticated || !principal) return;
 
-      const nominal = BigInt(
-        Math.floor(Number(topUpAmount) * 100000000)
-      )
+      const nominal = BigInt(Math.floor(Number(topUpAmount) * 100000000));
 
+      // Step 1: Transfer funds to savings
+      setStakingProgress("Transferring funds to savings...");
       await topUpSaving(actor, {
         amount: nominal,
         savingId: BigInt(savingId),
         principalId: principal
-      })
+      });
 
-      console.log(
-        `Transferring ${topUpAmount} ICP to saving plan ${savingPlan.id}`
-      );
+      console.log(`Transferring ${topUpAmount} ICP to saving plan ${savingPlan.id}`);
 
+      // Step 2: If staking is enabled, automatically stake the deposited amount
+      if (savingPlan.isStaking) {
+        setIsStaking(true);
+        setStakingProgress("Staking deposited amount...");
+
+        try {
+          const stakingResult = await stakeICP(actor, {
+            amount: nominal,
+            principalId: principal,
+            savingId: BigInt(savingId),
+            dissolveDelay: BigInt(365 * 24 * 60 * 60 * 1000000000) // 1 year in nanoseconds
+          });
+
+          if ("Ok" in stakingResult) {
+            console.log(`Successfully staked ${topUpAmount} ICP`);
+            console.log(`Neuron ID: ${stakingResult.Ok.neuronId}`);
+            console.log(`Expected rewards: ${Number(stakingResult.Ok.expectedRewards) / 100000000} ICP`);
+            console.log(`Dissolve delay: ${Number(stakingResult.Ok.dissolveDelay) / (24 * 60 * 60 * 1000000000)} days`);
+            setStakingProgress("Staking completed successfully!");
+          } else {
+            console.warn("Staking failed:", stakingResult.Err);
+            setStakingProgress(`Transfer completed, staking failed: ${stakingResult.Err}`);
+          }
+        } catch (stakingError) {
+          console.error("Failed to stake deposited amount:", stakingError);
+          setStakingProgress("Transfer completed, staking failed");
+          // Don't throw error here - the transfer was successful
+        }
+      }
+
+      // Update the saving plan with new amount
       const newCurrentSaved = savingPlan.currentSaved + Number(topUpAmount);
       setSavingPlan({
         ...savingPlan,
@@ -310,15 +348,21 @@ function SavingsPlanDetailsContent() {
       setShowConfirmation(false);
       setTopUpAmount("");
 
+      // Show confetti if goal is reached
       if (newCurrentSaved >= savingPlan.totalAmount) {
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 5000);
       }
+
     } catch (error) {
       console.error("Failed to process top-up:", error);
       setTopUpErrors("Failed to process top-up. Please try again.");
+      setStakingProgress("Transfer failed");
     } finally {
       setIsProcessingTopUp(false);
+      setIsStaking(false);
+      // Clear staking progress after a delay
+      setTimeout(() => setStakingProgress(""), 3000);
     }
   };
 
@@ -326,12 +370,54 @@ function SavingsPlanDetailsContent() {
     if (!savingPlan) return;
 
     setIsProcessingWithdraw(true);
+    setUnstakingProgress("Initiating withdrawal...");
+
     try {
       if (!actor || !isAuthenticated || !principal) return;
 
-      await withdrawSaving(actor, BigInt(savingId))
-
       const withdrawalAmount = Number(withdrawAmount);
+
+      // Step 1: If staking is enabled, unstake first
+      if (savingPlan.isStaking) {
+        setIsUnstaking(true);
+        setUnstakingProgress("Checking staking positions...");
+
+        try {
+          // Get staking info for this saving plan
+          const stakingInfo = await getStakingInfo(actor, BigInt(savingId));
+
+          if (stakingInfo && stakingInfo.neuronId) {
+            setUnstakingProgress("Unstaking funds...");
+
+            const unstakeResult = await unstakeICP(actor, {
+              savingId: BigInt(savingId),
+              neuronId: stakingInfo.neuronId,
+              principalId: principal
+            });
+
+            if ("Ok" in unstakeResult) {
+              console.log(`Successfully unstaked for saving plan ${savingId}`);
+              setUnstakingProgress("Unstaking completed, proceeding with withdrawal...");
+            } else {
+              console.warn("Unstaking failed:", unstakeResult.Err);
+              setUnstakingProgress(`Unstaking failed: ${unstakeResult.Err}, proceeding with withdrawal...`);
+              // Continue with withdrawal even if unstaking fails
+            }
+          } else {
+            console.log("No staking position found, proceeding with withdrawal");
+            setUnstakingProgress("No staking position found, proceeding with withdrawal...");
+          }
+        } catch (unstakingError) {
+          console.error("Failed to unstake:", unstakingError);
+          setUnstakingProgress("Unstaking failed, proceeding with withdrawal...");
+          // Continue with withdrawal even if unstaking fails
+        }
+      }
+
+      // Step 2: Proceed with withdrawal
+      setUnstakingProgress("Processing withdrawal...");
+      await withdrawSaving(actor, BigInt(savingId));
+
       const adminFee = calculateAdminFee(withdrawalAmount, isForceWithdraw);
       const netAmount = withdrawalAmount - adminFee;
 
@@ -351,11 +437,17 @@ function SavingsPlanDetailsContent() {
       setShowWithdrawConfirmation(false);
       setWithdrawAmount("");
       setIsForceWithdraw(false);
+      setUnstakingProgress("Withdrawal completed successfully!");
+
     } catch (error) {
       console.error("Failed to process withdrawal:", error);
       setWithdrawErrors("Failed to process withdrawal. Please try again.");
+      setUnstakingProgress("Withdrawal failed");
     } finally {
       setIsProcessingWithdraw(false);
+      setIsUnstaking(false);
+      // Clear unstaking progress after a delay
+      setTimeout(() => setUnstakingProgress(""), 3000);
     }
   };
 
@@ -364,6 +456,8 @@ function SavingsPlanDetailsContent() {
     setShowConfirmation(false);
     setTopUpAmount("");
     setTopUpErrors("");
+    setStakingProgress("");
+    setUnstakingProgress("");
   };
 
   const handleWithdrawCancel = () => {
@@ -603,7 +697,7 @@ function SavingsPlanDetailsContent() {
 
               {savingPlan.isStaking && (
                 <span className="bg-green-500/20 border border-green-500/30 text-green-400 text-sm px-3 py-1 rounded-full">
-                  Staking Active
+                  Auto-Staking Active
                 </span>
               )}
 
@@ -800,7 +894,7 @@ function SavingsPlanDetailsContent() {
             </div>
           </motion.div>
 
-          {/* Action Buttons Section - Only show for active plans */}
+          {/* Action Buttons Section */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -819,9 +913,22 @@ function SavingsPlanDetailsContent() {
                   <h3 className="text-white text-xl font-semibold mb-2">
                     Add to Savings
                   </h3>
-                  <p className="text-white/70 mb-6">
+                  <p className="text-white/70 mb-2">
                     Contribute more to reach your goal faster
                   </p>
+
+                  {/* Auto-staking info */}
+                  {savingPlan.isStaking && (
+                    <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                      <div className="flex items-center justify-center space-x-2">
+                        <Shield size={16} className="text-green-400" />
+                        <span className="text-green-400 text-sm font-medium">
+                          Deposits will be automatically staked
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <ShimmerButton
                     className="px-6 py-3 text-base font-medium w-full"
                     onClick={handleTopUp}
@@ -831,7 +938,9 @@ function SavingsPlanDetailsContent() {
                   >
                     <div className="flex items-center justify-center space-x-2">
                       <Plus size={18} className="text-white" />
-                      <span className="text-white">Add Money</span>
+                      <span className="text-white">
+                        {savingPlan.isStaking ? "Add & Stake" : "Add Money"}
+                      </span>
                     </div>
                   </ShimmerButton>
                 </div>
@@ -946,8 +1055,23 @@ function SavingsPlanDetailsContent() {
               </button>
 
               <h3 className="text-white text-2xl font-bold mb-6 text-center">
-                Add to Savings
+                {savingPlan.isStaking ? "Add & Stake Funds" : "Add to Savings"}
               </h3>
+
+              {/* Staking info banner */}
+              {savingPlan.isStaking && (
+                <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
+                  <div className="flex items-start space-x-3">
+                    <Shield size={20} className="text-green-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-green-400 font-medium text-sm mb-1">Auto-Staking Enabled</h4>
+                      <p className="text-green-200 text-xs">
+                        Your deposit will be automatically staked to earn 8.5% APY rewards after the transfer completes.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="mb-6">
                 <label className="block text-white/80 text-sm font-medium mb-3">
@@ -1130,7 +1254,7 @@ function SavingsPlanDetailsContent() {
         )}
       </AnimatePresence>
 
-      {/* Top-Up Confirmation Modal */}
+      {/* Top-Up Confirmation Modal with Staking Progress */}
       <AnimatePresence>
         {showConfirmation && (
           <motion.div
@@ -1147,33 +1271,63 @@ function SavingsPlanDetailsContent() {
             >
               <div className="text-center mb-6">
                 {isProcessingTopUp ? (
-                  <Loader
-                    size={48}
-                    className="text-white mx-auto mb-4 animate-spin"
-                  />
+                  <div className="mb-4">
+                    <Loader
+                      size={48}
+                      className="text-white mx-auto mb-4 animate-spin"
+                    />
+                    {isStaking && (
+                      <Shield size={24} className="text-green-400 mx-auto mb-2" />
+                    )}
+                  </div>
                 ) : (
                   <CheckCircle size={48} className="text-white mx-auto mb-4" />
                 )}
+
                 <h3 className="text-white text-2xl font-bold mb-2">
-                  {isProcessingTopUp ? "Processing..." : "Confirm Transfer"}
+                  {isProcessingTopUp
+                    ? (isStaking ? "Processing & Staking..." : "Processing Transfer...")
+                    : (savingPlan.isStaking ? "Confirm Transfer & Staking" : "Confirm Transfer")}
                 </h3>
-                <p className="text-white/70">
+
+                <div className="text-white/70">
                   {isProcessingTopUp ? (
-                    "Processing your transfer..."
+                    <div className="space-y-2">
+                      <p>{stakingProgress}</p>
+                      {isStaking && (
+                        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                          <p className="text-green-400 text-sm">
+                            🔄 Auto-staking in progress...
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   ) : (
-                    <>
-                      Transfer{" "}
-                      <span className="text-white font-semibold">
-                        {topUpAmount} ICP
-                      </span>{" "}
-                      to your savings plan?
-                      <br />
-                      <span className="text-white/50 text-sm">
+                    <div className="space-y-3">
+                      <p>
+                        Transfer{" "}
+                        <span className="text-white font-semibold">
+                          {topUpAmount} ICP
+                        </span>{" "}
+                        to your savings plan
+                      </p>
+                      <p className="text-white/50 text-sm">
                         ≈ ${formatUSD(Number(topUpAmount))} USD
-                      </span>
-                    </>
+                      </p>
+
+                      {savingPlan.isStaking && (
+                        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                          <div className="flex items-center justify-center space-x-2">
+                            <Shield size={16} className="text-green-400" />
+                            <span className="text-green-400 text-sm">
+                              Funds will be automatically staked after transfer
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
-                </p>
+                </div>
               </div>
 
               {!isProcessingTopUp && (
@@ -1191,7 +1345,9 @@ function SavingsPlanDetailsContent() {
                     shimmerColor="#ffffff"
                     shimmerSize="0.1em"
                   >
-                    <span className="text-white">Confirm</span>
+                    <span className="text-white">
+                      {savingPlan.isStaking ? "Transfer & Stake" : "Confirm"}
+                    </span>
                   </ShimmerButton>
                 </div>
               )}
@@ -1217,10 +1373,15 @@ function SavingsPlanDetailsContent() {
             >
               <div className="text-center mb-6">
                 {isProcessingWithdraw ? (
-                  <Loader
-                    size={48}
-                    className="text-white mx-auto mb-4 animate-spin"
-                  />
+                  <div className="mb-4">
+                    <Loader
+                      size={48}
+                      className="text-white mx-auto mb-4 animate-spin"
+                    />
+                    {isUnstaking && (
+                      <Shield size={24} className="text-orange-400 mx-auto mb-2" />
+                    )}
+                  </div>
                 ) : (
                   <div className="mb-4">
                     {isForceWithdraw ? (
@@ -1231,11 +1392,41 @@ function SavingsPlanDetailsContent() {
                   </div>
                 )}
                 <h3 className="text-white text-2xl font-bold mb-2">
-                  {isProcessingWithdraw ? "Processing Withdrawal..." : "Confirm Withdrawal"}
+                  {isProcessingWithdraw
+                    ? (isUnstaking ? "Processing Unstaking & Withdrawal..." : "Processing Withdrawal...")
+                    : "Confirm Withdrawal"}
                 </h3>
+
+                {isProcessingWithdraw && (
+                  <div className="space-y-2">
+                    <p className="text-white/70">{unstakingProgress}</p>
+                    {isUnstaking && savingPlan.isStaking && (
+                      <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                        <p className="text-orange-400 text-sm">
+                          🔄 Auto-unstaking in progress...
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {!isProcessingWithdraw && (
                   <div className="space-y-3">
+                    {/* Unstaking warning for staked savings */}
+                    {savingPlan.isStaking && (
+                      <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl">
+                        <div className="flex items-start space-x-3">
+                          <Shield size={20} className="text-orange-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="text-orange-400 font-medium text-sm mb-1">Auto-Unstaking Required</h4>
+                            <p className="text-orange-200 text-xs">
+                              Your staked funds will be automatically unstaked before withdrawal. This may take some time to process.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="p-4 bg-white/5 rounded-xl text-left space-y-2">
                       <div className="flex justify-between text-white/70 text-sm">
                         <span>Withdrawal Amount:</span>
