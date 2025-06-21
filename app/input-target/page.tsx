@@ -14,52 +14,16 @@ import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { useSavingsAnalysis } from "@/contexts/SavingsAnalysisContext";
-import { useAuth } from "@/hooks/useAuth";
-import { prompt } from "@/service/icService";
-import { SavingsAnalysis } from "@/lib/analysis";
 
 export default function InputTarget() {
   const router = useRouter();
   const { setAnalysisData, setUserInput, icpToUsdRate } = useSavingsAnalysis();
-  const { actor } = useAuth();
   const [target, setTarget] = useState("");
   const [monthlyIncome, setMonthlyIncome] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errors, setErrors] = useState({ target: "", income: "" });
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
-
-  // Simple fallback for when LLM doesn't return JSON
-  const getSimpleFallback = (target: string) => {
-    const isSmall = target.toLowerCase().match(/food|coffee|lunch|snack|drink|makan|mie/);
-    const costUsd = isSmall ? 5 : 1000;
-    
-    return {
-      estimatedCostUsd: costUsd,
-      savingsPercentage: isSmall ? 0.01 : 15,
-      timelineMonths: isSmall ? 0 : 12,
-      isImmediate: isSmall,
-      recommendations: [
-        {
-          title: isSmall ? "Go Buy It!" : "Start Saving",
-          description: isSmall ? "You can afford this right now" : "Save consistently each month",
-          priority: "high"
-        },
-        {
-          title: "Track Spending",
-          description: "Monitor your expenses",
-          priority: "medium"
-        }
-      ],
-      insights: [
-        isSmall ? "Simple pleasures are okay within budget" : "Consistent saving leads to success",
-        "Track your spending patterns",
-        "Make conscious money decisions",
-        "Balance enjoying today with planning tomorrow"
-      ],
-      priority: 1
-    };
-  };
 
   // Load initial AI suggestions on page load
   useEffect(() => {
@@ -120,10 +84,6 @@ export default function InputTarget() {
 
   const handleAnalyze = async () => {
     if (!validateForm()) return;
-    if (!actor) {
-      alert("Please connect your wallet first");
-      return;
-    }
 
     setIsAnalyzing(true);
 
@@ -135,108 +95,26 @@ export default function InputTarget() {
         monthlyIncome: monthlyIncomeUsd,
       });
 
-      // Call ICP canister directly
-      const monthlyIncomeIcp = monthlyIncomeUsd / icpToUsdRate;
-      const promptMessage = `You are a financial advisor AI. Analyze this savings goal and respond with ONLY valid JSON.
-
-Target: ${target}
-Monthly Income: $${monthlyIncomeUsd} USD (${monthlyIncomeIcp.toFixed(2)} ICP)
-ICP Rate: 1 ICP = $${icpToUsdRate} USD
-
-Rules:
-- If it's food/coffee/small items (under $50) → immediate purchase
-- If it's big goals (vacation/car/house) → savings plan
-- Be realistic about costs
-
-RESPOND WITH ONLY THIS JSON STRUCTURE (no other text):
-{
-  "estimatedCostUsd": ${target.toLowerCase().match(/food|coffee|lunch|snack|drink|makan|mie/) ? 5 : 1000},
-  "savingsPercentage": ${target.toLowerCase().match(/food|coffee|lunch|snack|drink|makan|mie/) ? 0.01 : 15},
-  "timelineMonths": ${target.toLowerCase().match(/food|coffee|lunch|snack|drink|makan|mie/) ? 0 : 12},
-  "isImmediate": ${target.toLowerCase().match(/food|coffee|lunch|snack|drink|makan|mie/) ? 'true' : 'false'},
-  "recommendations": [
-    {"title": "Optimal Savings Rate", "description": "Save consistently for your goal", "priority": "high"},
-    {"title": "Timeline Prediction", "description": "Realistic timeframe based on income", "priority": "medium"}
-  ],
-  "insights": ["Be consistent with savings", "Track your progress", "Adjust as needed", "Stay motivated"],
-  "priority": 1
-}`;
-
-      // Get response from ICP canister
-      const response = await prompt(actor, promptMessage);
-      if (!response) throw new Error('No response from ICP canister');
-
-      // Parse and transform the response
-      let data;
-      try {
-        data = JSON.parse(response);
-      } catch {
-        console.error('Response is not valid JSON:', response);
-        // Fallback: create a simple analysis based on the target
-        data = getSimpleFallback(target);
-      }
-      
-      // Transform to SavingsAnalysis format
-      const costIcp = data.estimatedCostUsd / icpToUsdRate;
-      const savingsUsd = data.isImmediate ? data.estimatedCostUsd : (monthlyIncomeUsd * data.savingsPercentage) / 100;
-      const savingsIcp = savingsUsd / icpToUsdRate;
-      
-      const targetDate = new Date();
-      targetDate.setMonth(targetDate.getMonth() + data.timelineMonths);
-      
-      // Map recommendations with smart amounts
-      const recommendations = data.recommendations.map((rec: { title: string; description: string; priority: string }, index: number) => {
-        let amount = "";
-        let amountUsd = "";
-        let icon = "CheckCircle";
-        
-        if (index === 0) { // First recommendation
-          if (data.isImmediate) {
-            amount = `${costIcp.toFixed(4)} ICP`;
-            amountUsd = `≈ $${data.estimatedCostUsd.toFixed(2)}`;
-            icon = "Target";
-          } else {
-            amount = `${savingsIcp.toFixed(2)} ICP/month`;
-            amountUsd = `≈ $${savingsUsd.toFixed(0)}/month`;
-            icon = "TrendingUp";
-          }
-        } else { // Second recommendation
-          if (data.isImmediate) {
-            amount = "Daily tracking";
-            icon = "TrendingUp";
-          } else {
-            amount = data.timelineMonths > 0 ? targetDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : "Now";
-            icon = "Calendar";
-          }
-        }
-        
-        return {
-          title: rec.title,
-          description: rec.description,
-          amount,
-          amountUsd,
-          icon,
-          priority: rec.priority as 'high' | 'medium' | 'low',
-        };
+      // Get AI analysis from ChatGPT via API
+      const response = await fetch("/api/analyze-savings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          target,
+          monthlyIncome: monthlyIncomeUsd,
+          icpToUsdRate,
+        }),
       });
 
-      const analysis: SavingsAnalysis = {
-        recommendations,
-        insights: data.insights,
-        estimatedCost: { icp: costIcp, usd: data.estimatedCostUsd },
-        timeline: { 
-          months: data.timelineMonths, 
-          targetDate: data.timelineMonths > 0 ? targetDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : "Now"
-        },
-        monthlySavings: { 
-          icp: savingsIcp, 
-          usd: savingsUsd, 
-          percentage: data.isImmediate ? 0.01 : data.savingsPercentage
-        },
-        priority: data.priority
-      };
+      if (!response.ok) {
+        throw new Error("Failed to analyze savings goal");
+      }
 
+      const analysis = await response.json();
       setAnalysisData(analysis);
+
       setIsAnalyzing(false);
       router.push("analysis-results");
     } catch (error) {

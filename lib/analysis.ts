@@ -1,6 +1,4 @@
-import { Actor, ActorSubclass, HttpAgent } from "@dfinity/agent";
-import { _SERVICE, idlFactory } from "@/service/backend.did";
-import { prompt } from '../service/icService';
+import { openai } from './openai';
 
 export interface SavingsAnalysis {
   recommendations: {
@@ -36,7 +34,7 @@ export async function analyzeSavingsGoal(
   try {
     const monthlyIncomeIcp = monthlyIncomeUsd / icpToUsdRate;
     
-    const promptMessage = `
+    const prompt = `
 You are a smart financial advisor AI. Analyze this savings goal and be intelligent about it.
 
 Target: ${target}
@@ -64,21 +62,18 @@ Return JSON with exactly this structure:
 }
 `;
 
-    // Use ICP canister's prompt function instead of OpenAI (server-side, anonymous)
-    const agent = new HttpAgent({ host: "https://ic0.app/" });
-    // Fetch root key for development - remove in production
-    if (process.env.NODE_ENV !== "production") {
-      await agent.fetchRootKey();
-    }
-    const actor: ActorSubclass<_SERVICE> = Actor.createActor<_SERVICE>(
-      idlFactory,
-      {
-        canisterId: "3ykjv-vqaaa-aaaaj-a2beq-cai",
-        agent,
-      }
-    );
-    const response = await prompt(actor, promptMessage);
-    if (!response) throw new Error('No response from ICP canister');
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: "You are a helpful financial advisor. Always respond with valid JSON only." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 800,
+    });
+
+    const response = completion.choices[0]?.message?.content;
+    if (!response) throw new Error('No response from OpenAI');
 
     const data = JSON.parse(response);
     
