@@ -19,13 +19,14 @@ import {
   TrendingDown,
   Minus,
   AlertTriangle,
+  Shield,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { useAuth } from "@/hooks/useAuth";
 import { useICPPrice } from "@/contexts/ICPPriceContext";
-import { getUserSavings } from "@/service/icService";
+import { getUserSavings, topUpSaving, withdrawSaving, stakeICP, unstakeICP, getStakingInfo } from "@/service/icService";
 
 // Icon mapping for different saving types
 const getSavingIcon = (savingName: string) => {
@@ -86,11 +87,16 @@ function SavingsPlanDetailsContent() {
   const [topUpErrors, setTopUpErrors] = useState("");
   const [isProcessingTopUp, setIsProcessingTopUp] = useState(false);
 
+  // New staking-related state
+  const [isStaking, setIsStaking] = useState(false);
+  const [stakingProgress, setStakingProgress] = useState("");
+  const [isUnstaking, setIsUnstaking] = useState(false);
+  const [unstakingProgress, setUnstakingProgress] = useState("");
+
   // Withdraw state management
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [showWithdrawConfirmation, setShowWithdrawConfirmation] =
-    useState(false);
+  const [showWithdrawConfirmation, setShowWithdrawConfirmation] = useState(false);
   const [withdrawErrors, setWithdrawErrors] = useState("");
   const [isProcessingWithdraw, setIsProcessingWithdraw] = useState(false);
   const [isForceWithdraw, setIsForceWithdraw] = useState(false);
@@ -150,7 +156,7 @@ function SavingsPlanDetailsContent() {
         const createdDate = new Date(Number(targetSaving.createdAt) / 1000000);
         const totalMonths = Math.ceil(
           (deadlineDate.getTime() - createdDate.getTime()) /
-            (1000 * 60 * 60 * 24 * 30)
+          (1000 * 60 * 60 * 24 * 30)
         );
         const elapsedMonths = Math.ceil(
           (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
@@ -285,14 +291,52 @@ function SavingsPlanDetailsContent() {
     if (!savingPlan) return;
 
     setIsProcessingTopUp(true);
-    try {
-      // Here you would implement the actual top-up logic
-      // For now, we'll simulate it
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+    setStakingProgress("Initiating transfer...");
 
-      console.log(
-        `Transferring ${topUpAmount} ICP to saving plan ${savingPlan.id}`
-      );
+    try {
+      if (!actor || !isAuthenticated || !principal) return;
+
+      const nominal = BigInt(Math.floor(Number(topUpAmount) * 100000000));
+
+      // Step 1: Transfer funds to savings
+      setStakingProgress("Transferring funds to savings...");
+      await topUpSaving(actor, {
+        amount: nominal,
+        savingId: BigInt(savingId),
+        principalId: principal
+      });
+
+      console.log(`Transferring ${topUpAmount} ICP to saving plan ${savingPlan.id}`);
+
+      // Step 2: If staking is enabled, automatically stake the deposited amount
+      if (savingPlan.isStaking) {
+        setIsStaking(true);
+        setStakingProgress("Staking deposited amount...");
+
+        try {
+          const stakingResult = await stakeICP(actor, {
+            amount: nominal,
+            principalId: principal,
+            savingId: BigInt(savingId),
+            dissolveDelay: BigInt(365 * 24 * 60 * 60 * 1000000000) // 1 year in nanoseconds
+          });
+
+          if ("Ok" in stakingResult) {
+            console.log(`Successfully staked ${topUpAmount} ICP`);
+            console.log(`Neuron ID: ${stakingResult.Ok.neuronId}`);
+            console.log(`Expected rewards: ${Number(stakingResult.Ok.expectedRewards) / 100000000} ICP`);
+            console.log(`Dissolve delay: ${Number(stakingResult.Ok.dissolveDelay) / (24 * 60 * 60 * 1000000000)} days`);
+            setStakingProgress("Staking completed successfully!");
+          } else {
+            console.warn("Staking failed:", stakingResult.Err);
+            setStakingProgress(`Transfer completed, staking failed: ${stakingResult.Err}`);
+          }
+        } catch (stakingError) {
+          console.error("Failed to stake deposited amount:", stakingError);
+          setStakingProgress("Transfer completed, staking failed");
+          // Don't throw error here - the transfer was successful
+        }
+      }
 
       // Update the saving plan with new amount
       const newCurrentSaved = savingPlan.currentSaved + Number(topUpAmount);
@@ -304,16 +348,21 @@ function SavingsPlanDetailsContent() {
       setShowConfirmation(false);
       setTopUpAmount("");
 
-      // Show success message or confetti if goal is reached
+      // Show confetti if goal is reached
       if (newCurrentSaved >= savingPlan.totalAmount) {
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 5000);
       }
+
     } catch (error) {
       console.error("Failed to process top-up:", error);
       setTopUpErrors("Failed to process top-up. Please try again.");
+      setStakingProgress("Transfer failed");
     } finally {
       setIsProcessingTopUp(false);
+      setIsStaking(false);
+      // Clear staking progress after a delay
+      setTimeout(() => setStakingProgress(""), 3000);
     }
   };
 
@@ -321,12 +370,54 @@ function SavingsPlanDetailsContent() {
     if (!savingPlan) return;
 
     setIsProcessingWithdraw(true);
+    setUnstakingProgress("Initiating withdrawal...");
+
     try {
-      // Here you would implement the actual withdrawal logic
-      // For now, we'll simulate it
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      if (!actor || !isAuthenticated || !principal) return;
 
       const withdrawalAmount = Number(withdrawAmount);
+
+      // Step 1: If staking is enabled, unstake first
+      if (savingPlan.isStaking) {
+        setIsUnstaking(true);
+        setUnstakingProgress("Checking staking positions...");
+
+        try {
+          // Get staking info for this saving plan
+          const stakingInfo = await getStakingInfo(actor, BigInt(savingId));
+
+          if (stakingInfo && stakingInfo.neuronId) {
+            setUnstakingProgress("Unstaking funds...");
+
+            const unstakeResult = await unstakeICP(actor, {
+              savingId: BigInt(savingId),
+              neuronId: stakingInfo.neuronId,
+              principalId: principal
+            });
+
+            if ("Ok" in unstakeResult) {
+              console.log(`Successfully unstaked for saving plan ${savingId}`);
+              setUnstakingProgress("Unstaking completed, proceeding with withdrawal...");
+            } else {
+              console.warn("Unstaking failed:", unstakeResult.Err);
+              setUnstakingProgress(`Unstaking failed: ${unstakeResult.Err}, proceeding with withdrawal...`);
+              // Continue with withdrawal even if unstaking fails
+            }
+          } else {
+            console.log("No staking position found, proceeding with withdrawal");
+            setUnstakingProgress("No staking position found, proceeding with withdrawal...");
+          }
+        } catch (unstakingError) {
+          console.error("Failed to unstake:", unstakingError);
+          setUnstakingProgress("Unstaking failed, proceeding with withdrawal...");
+          // Continue with withdrawal even if unstaking fails
+        }
+      }
+
+      // Step 2: Proceed with withdrawal
+      setUnstakingProgress("Processing withdrawal...");
+      await withdrawSaving(actor, BigInt(savingId));
+
       const adminFee = calculateAdminFee(withdrawalAmount, isForceWithdraw);
       const netAmount = withdrawalAmount - adminFee;
 
@@ -337,10 +428,7 @@ function SavingsPlanDetailsContent() {
       console.log(`Net amount received: ${netAmount.toFixed(8)} ICP`);
 
       // Update the saving plan with new amount
-      const newCurrentSaved = Math.max(
-        0,
-        savingPlan.currentSaved - withdrawalAmount
-      );
+      const newCurrentSaved = Math.max(0, savingPlan.currentSaved - withdrawalAmount);
       setSavingPlan({
         ...savingPlan,
         currentSaved: newCurrentSaved,
@@ -349,11 +437,17 @@ function SavingsPlanDetailsContent() {
       setShowWithdrawConfirmation(false);
       setWithdrawAmount("");
       setIsForceWithdraw(false);
+      setUnstakingProgress("Withdrawal completed successfully!");
+
     } catch (error) {
       console.error("Failed to process withdrawal:", error);
       setWithdrawErrors("Failed to process withdrawal. Please try again.");
+      setUnstakingProgress("Withdrawal failed");
     } finally {
       setIsProcessingWithdraw(false);
+      setIsUnstaking(false);
+      // Clear unstaking progress after a delay
+      setTimeout(() => setUnstakingProgress(""), 3000);
     }
   };
 
@@ -362,6 +456,8 @@ function SavingsPlanDetailsContent() {
     setShowConfirmation(false);
     setTopUpAmount("");
     setTopUpErrors("");
+    setStakingProgress("");
+    setUnstakingProgress("");
   };
 
   const handleWithdrawCancel = () => {
@@ -389,10 +485,10 @@ function SavingsPlanDetailsContent() {
         setSavingPlan((prev) =>
           prev
             ? {
-                ...prev,
-                currentSaved: currentAmount,
-                totalAmount: targetAmount,
-              }
+              ...prev,
+              currentSaved: currentAmount,
+              totalAmount: targetAmount,
+            }
             : null
         );
       }
@@ -459,9 +555,7 @@ function SavingsPlanDetailsContent() {
     100
   );
 
-  const isEligibleForNormalWithdraw = isWithdrawalEligible(
-    savingPlan.targetDate
-  );
+  const isEligibleForNormalWithdraw = isWithdrawalEligible(savingPlan.targetDate);
 
   return (
     <div className="relative min-h-screen w-screen overflow-hidden bg-black">
@@ -591,34 +685,30 @@ function SavingsPlanDetailsContent() {
             {/* Status Badge */}
             <div className="mt-4 flex items-center justify-center space-x-4">
               <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  savingPlan.status === "Active"
-                    ? "bg-blue-500/20 border border-blue-500/30 text-blue-400"
-                    : savingPlan.status === "Completed"
+                className={`px-3 py-1 rounded-full text-sm font-medium ${savingPlan.status === "Active"
+                  ? "bg-blue-500/20 border border-blue-500/30 text-blue-400"
+                  : savingPlan.status === "Completed"
                     ? "bg-green-500/20 border border-green-500/30 text-green-400"
                     : "bg-red-500/20 border border-red-500/30 text-red-400"
-                }`}
+                  }`}
               >
                 {savingPlan.status}
               </span>
 
               {savingPlan.isStaking && (
                 <span className="bg-green-500/20 border border-green-500/30 text-green-400 text-sm px-3 py-1 rounded-full">
-                  Staking Active
+                  Auto-Staking Active
                 </span>
               )}
 
               {/* Withdrawal Eligibility Badge */}
               <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  isEligibleForNormalWithdraw
-                    ? "bg-green-500/20 border border-green-500/30 text-green-400"
-                    : "bg-orange-500/20 border border-orange-500/30 text-orange-400"
-                }`}
+                className={`px-3 py-1 rounded-full text-sm font-medium ${isEligibleForNormalWithdraw
+                  ? "bg-green-500/20 border border-green-500/30 text-green-400"
+                  : "bg-orange-500/20 border border-orange-500/30 text-orange-400"
+                  }`}
               >
-                {isEligibleForNormalWithdraw
-                  ? "Withdrawal Available"
-                  : "Early Withdrawal Only"}
+                {isEligibleForNormalWithdraw ? "Withdrawal Available" : "Early Withdrawal Only"}
               </span>
             </div>
 
@@ -635,11 +725,10 @@ function SavingsPlanDetailsContent() {
                     1 ICP = ${priceData.price.toFixed(2)} USD
                   </span>
                   <div
-                    className={`flex items-center space-x-1 text-xs ${
-                      priceData.changePercent24h >= 0
-                        ? "text-green-400"
-                        : "text-red-400"
-                    }`}
+                    className={`flex items-center space-x-1 text-xs ${priceData.changePercent24h >= 0
+                      ? "text-green-400"
+                      : "text-red-400"
+                      }`}
                   >
                     {priceData.changePercent24h >= 0 ? (
                       <TrendingUp size={12} />
@@ -805,135 +894,106 @@ function SavingsPlanDetailsContent() {
             </div>
           </motion.div>
 
-          {/* Action Buttons Section - Only show for active plans */}
-          {savingPlan.status === "Active" && savingPlan.currentSaved > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-              className="mb-12"
-            >
-              <h2 className="text-2xl font-bold text-white mb-8 text-center">
-                Manage Your Savings
-              </h2>
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Top Up Section */}
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-50" />
-                  <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
-                    <Plus size={32} className="text-green-400 mx-auto mb-4" />
-                    <h3 className="text-white text-xl font-semibold mb-2">
-                      Add to Savings
-                    </h3>
-                    <p className="text-white/70 mb-6">
-                      Contribute more to reach your goal faster
-                    </p>
-                    <ShimmerButton
-                      className="px-6 py-3 text-base font-medium w-full"
-                      onClick={handleTopUp}
-                      background="#16a34a"
-                      shimmerColor="#ffffff"
-                      shimmerSize="0.15em"
-                    >
-                      <div className="flex items-center justify-center space-x-2">
-                        <Plus size={18} className="text-white" />
-                        <span className="text-white">Add Money</span>
-                      </div>
-                    </ShimmerButton>
-                  </div>
-                </div>
-
-                {/* Withdraw Section */}
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-50" />
-                  <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
-                    <Minus size={32} className="text-blue-400 mx-auto mb-4" />
-                    <h3 className="text-white text-xl font-semibold mb-2">
-                      Withdraw Funds
-                    </h3>
-                    <p className="text-white/70 mb-2">
-                      {isEligibleForNormalWithdraw
-                        ? "Withdraw without penalty"
-                        : "Early withdrawal available with penalty"}
-                    </p>
-
-                    {/* Withdrawal Info */}
-                    <div className="mb-6">
-                      {isEligibleForNormalWithdraw ? (
-                        <div className="flex items-center justify-center space-x-2 text-green-400 text-sm">
-                          <CheckCircle size={16} />
-                          <span>Normal withdrawal (2% admin fee)</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center space-x-2 text-orange-400 text-sm">
-                          <AlertTriangle size={16} />
-                          <span>Early withdrawal (5% admin fee)</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <ShimmerButton
-                      className="px-6 py-3 text-base font-medium w-full"
-                      onClick={handleWithdraw}
-                      background={
-                        isEligibleForNormalWithdraw ? "#3b82f6" : "#f97316"
-                      }
-                      shimmerColor="#ffffff"
-                      shimmerSize="0.15em"
-                    >
-                      <div className="flex items-center justify-center space-x-2">
-                        <Minus size={18} className="text-white" />
-                        <span className="text-white">
-                          {isEligibleForNormalWithdraw
-                            ? "Withdraw"
-                            : "Force Withdraw"}
-                        </span>
-                      </div>
-                    </ShimmerButton>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Top Up Section - Legacy (for plans without current savings) */}
-          {savingPlan.status === "Active" && savingPlan.currentSaved === 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-              className="mb-12"
-            >
-              <h2 className="text-2xl font-bold text-white mb-8 text-center">
-                Add to Savings
-              </h2>
+          {/* Action Buttons Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="mb-12"
+          >
+            <h2 className="text-2xl font-bold text-white mb-8 text-center">
+              Manage Your Savings
+            </h2>
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Top Up Section */}
               <div className="relative group">
                 <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-50" />
                 <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
-                  <Plus size={32} className="text-white/80 mx-auto mb-4" />
+                  <Plus size={32} className="text-green-400 mx-auto mb-4" />
                   <h3 className="text-white text-xl font-semibold mb-2">
-                    Top Up Your Savings
+                    Add to Savings
                   </h3>
-                  <p className="text-white/70 max-w-2xl mx-auto mb-8">
-                    Add money to your savings plan anytime to reach your goal
-                    faster
+                  <p className="text-white/70 mb-2">
+                    Contribute more to reach your goal faster
                   </p>
+
+                  {/* Auto-staking info */}
+                  {savingPlan.isStaking && (
+                    <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                      <div className="flex items-center justify-center space-x-2">
+                        <Shield size={16} className="text-green-400" />
+                        <span className="text-green-400 text-sm font-medium">
+                          Deposits will be automatically staked
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <ShimmerButton
-                    className="px-8 py-4 text-lg font-medium mx-auto"
+                    className="px-6 py-3 text-base font-medium w-full"
                     onClick={handleTopUp}
-                    background="#1f2937"
+                    background="#16a34a"
                     shimmerColor="#ffffff"
                     shimmerSize="0.15em"
                   >
-                    <div className="flex items-center space-x-3">
-                      <Plus size={20} className="text-white" />
-                      <span className="text-white">Add Money</span>
+                    <div className="flex items-center justify-center space-x-2">
+                      <Plus size={18} className="text-white" />
+                      <span className="text-white">
+                        {savingPlan.isStaking ? "Add & Stake" : "Add Money"}
+                      </span>
                     </div>
                   </ShimmerButton>
                 </div>
               </div>
-            </motion.div>
-          )}
+
+              {/* Withdraw Section */}
+              <div className="relative group">
+                <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-50" />
+                <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
+                  <Minus size={32} className="text-blue-400 mx-auto mb-4" />
+                  <h3 className="text-white text-xl font-semibold mb-2">
+                    Withdraw Funds
+                  </h3>
+                  <p className="text-white/70 mb-2">
+                    {isEligibleForNormalWithdraw
+                      ? "Withdraw without penalty"
+                      : "Early withdrawal available with penalty"
+                    }
+                  </p>
+
+                  {/* Withdrawal Info */}
+                  <div className="mb-6">
+                    {isEligibleForNormalWithdraw ? (
+                      <div className="flex items-center justify-center space-x-2 text-green-400 text-sm">
+                        <CheckCircle size={16} />
+                        <span>Normal withdrawal (2% admin fee)</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center space-x-2 text-orange-400 text-sm">
+                        <AlertTriangle size={16} />
+                        <span>Early withdrawal (5% admin fee)</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <ShimmerButton
+                    className="px-6 py-3 text-base font-medium w-full"
+                    onClick={handleWithdraw}
+                    background={isEligibleForNormalWithdraw ? "#3b82f6" : "#f97316"}
+                    shimmerColor="#ffffff"
+                    shimmerSize="0.15em"
+                  >
+                    <div className="flex items-center justify-center space-x-2">
+                      <Minus size={18} className="text-white" />
+                      <span className="text-white">
+                        {isEligibleForNormalWithdraw ? "Withdraw" : "Force Withdraw"}
+                      </span>
+                    </div>
+                  </ShimmerButton>
+                </div>
+              </div>
+            </div>
+          </motion.div>
 
           {/* Motivation Card */}
           <motion.div
@@ -995,8 +1055,23 @@ function SavingsPlanDetailsContent() {
               </button>
 
               <h3 className="text-white text-2xl font-bold mb-6 text-center">
-                Add to Savings
+                {savingPlan.isStaking ? "Add & Stake Funds" : "Add to Savings"}
               </h3>
+
+              {/* Staking info banner */}
+              {savingPlan.isStaking && (
+                <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
+                  <div className="flex items-start space-x-3">
+                    <Shield size={20} className="text-green-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-green-400 font-medium text-sm mb-1">Auto-Staking Enabled</h4>
+                      <p className="text-green-200 text-xs">
+                        Your deposit will be automatically staked to earn 8.5% APY rewards after the transfer completes.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="mb-6">
                 <label className="block text-white/80 text-sm font-medium mb-3">
@@ -1032,9 +1107,9 @@ function SavingsPlanDetailsContent() {
                 <ShimmerButton
                   className="flex-1 py-3"
                   onClick={handleConfirmTopUp}
-                  background="rgba(255, 255, 255, 0.1)"
+                  background="#1f2937"
                   shimmerColor="#ffffff"
-                  shimmerSize="0.1em"
+                  shimmerSize="0.05em"
                 >
                   <span className="text-white">Continue</span>
                 </ShimmerButton>
@@ -1074,17 +1149,11 @@ function SavingsPlanDetailsContent() {
               {isForceWithdraw && (
                 <div className="mb-6 p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl">
                   <div className="flex items-start space-x-3">
-                    <AlertTriangle
-                      size={20}
-                      className="text-orange-400 flex-shrink-0 mt-0.5"
-                    />
+                    <AlertTriangle size={20} className="text-orange-400 flex-shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="text-orange-400 font-medium text-sm mb-1">
-                        Early Withdrawal Penalty
-                      </h4>
+                      <h4 className="text-orange-400 font-medium text-sm mb-1">Early Withdrawal Penalty</h4>
                       <p className="text-orange-200 text-xs">
-                        Withdrawing before {savingPlan?.targetDate} incurs a 5%
-                        admin fee instead of the normal 2% fee.
+                        Withdrawing before {savingPlan?.targetDate} incurs a 5% admin fee instead of the normal 2% fee.
                       </p>
                     </div>
                   </div>
@@ -1102,9 +1171,7 @@ function SavingsPlanDetailsContent() {
                     max={savingPlan?.currentSaved}
                     value={withdrawAmount}
                     onChange={(e) => setWithdrawAmount(e.target.value)}
-                    placeholder={`Max: ${formatICP(
-                      savingPlan?.currentSaved || 0
-                    )}`}
+                    placeholder={`Max: ${formatICP(savingPlan?.currentSaved || 0)}`}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all duration-300"
                   />
                 </div>
@@ -1117,44 +1184,17 @@ function SavingsPlanDetailsContent() {
                       <span>{withdrawAmount} ICP</span>
                     </div>
                     <div className="flex justify-between text-white/70">
-                      <span>Admin Fee ({isForceWithdraw ? "5%" : "2%"}):</span>
-                      <span>
-                        -
-                        {formatICP(
-                          calculateAdminFee(
-                            Number(withdrawAmount),
-                            isForceWithdraw
-                          )
-                        )}{" "}
-                        ICP
-                      </span>
+                      <span>Admin Fee ({isForceWithdraw ? '5%' : '2%'}):</span>
+                      <span>-{formatICP(calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP</span>
                     </div>
                     <div className="border-t border-white/10 pt-2">
                       <div className="flex justify-between text-white font-medium">
-                        <span>You&apos;ll Receive:</span>
-                        <span>
-                          {formatICP(
-                            Number(withdrawAmount) -
-                              calculateAdminFee(
-                                Number(withdrawAmount),
-                                isForceWithdraw
-                              )
-                          )}{" "}
-                          ICP
-                        </span>
+                        <span>You'll Receive:</span>
+                        <span>{formatICP(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP</span>
                       </div>
                       <div className="flex justify-between text-white/50 text-xs">
                         <span>≈ USD:</span>
-                        <span>
-                          $
-                          {formatUSD(
-                            Number(withdrawAmount) -
-                              calculateAdminFee(
-                                Number(withdrawAmount),
-                                isForceWithdraw
-                              )
-                          )}
-                        </span>
+                        <span>${formatUSD(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))}</span>
                       </div>
                     </div>
                   </div>
@@ -1170,31 +1210,19 @@ function SavingsPlanDetailsContent() {
                 <p className="text-white/60 text-sm mb-3">Quick amounts:</p>
                 <div className="grid grid-cols-3 gap-2">
                   <button
-                    onClick={() =>
-                      setWithdrawAmount(
-                        (savingPlan?.currentSaved * 0.25 || 0).toFixed(8)
-                      )
-                    }
+                    onClick={() => setWithdrawAmount((savingPlan?.currentSaved * 0.25 || 0).toFixed(8))}
                     className="bg-white/5 border border-white/10 rounded-lg py-2 text-white/80 text-sm hover:bg-white/10 transition-all duration-300"
                   >
                     25%
                   </button>
                   <button
-                    onClick={() =>
-                      setWithdrawAmount(
-                        (savingPlan?.currentSaved * 0.5 || 0).toFixed(8)
-                      )
-                    }
+                    onClick={() => setWithdrawAmount((savingPlan?.currentSaved * 0.5 || 0).toFixed(8))}
                     className="bg-white/5 border border-white/10 rounded-lg py-2 text-white/80 text-sm hover:bg-white/10 transition-all duration-300"
                   >
                     50%
                   </button>
                   <button
-                    onClick={() =>
-                      setWithdrawAmount(
-                        (savingPlan?.currentSaved || 0).toFixed(8)
-                      )
-                    }
+                    onClick={() => setWithdrawAmount((savingPlan?.currentSaved || 0).toFixed(8))}
                     className="bg-white/5 border border-white/10 rounded-lg py-2 text-white/80 text-sm hover:bg-white/10 transition-all duration-300"
                   >
                     Max
@@ -1212,11 +1240,7 @@ function SavingsPlanDetailsContent() {
                 <ShimmerButton
                   className="flex-1 py-3"
                   onClick={handleConfirmWithdraw}
-                  background={
-                    isForceWithdraw
-                      ? "rgba(249, 115, 22, 0.3)"
-                      : "rgba(59, 130, 246, 0.3)"
-                  }
+                  background={isForceWithdraw ? "rgba(249, 115, 22, 0.3)" : "rgba(59, 130, 246, 0.3)"}
                   shimmerColor="#ffffff"
                   shimmerSize="0.1em"
                 >
@@ -1230,7 +1254,7 @@ function SavingsPlanDetailsContent() {
         )}
       </AnimatePresence>
 
-      {/* Top-Up Confirmation Modal */}
+      {/* Top-Up Confirmation Modal with Staking Progress */}
       <AnimatePresence>
         {showConfirmation && (
           <motion.div
@@ -1247,33 +1271,63 @@ function SavingsPlanDetailsContent() {
             >
               <div className="text-center mb-6">
                 {isProcessingTopUp ? (
-                  <Loader
-                    size={48}
-                    className="text-white mx-auto mb-4 animate-spin"
-                  />
+                  <div className="mb-4">
+                    <Loader
+                      size={48}
+                      className="text-white mx-auto mb-4 animate-spin"
+                    />
+                    {isStaking && (
+                      <Shield size={24} className="text-green-400 mx-auto mb-2" />
+                    )}
+                  </div>
                 ) : (
                   <CheckCircle size={48} className="text-white mx-auto mb-4" />
                 )}
+
                 <h3 className="text-white text-2xl font-bold mb-2">
-                  {isProcessingTopUp ? "Processing..." : "Confirm Transfer"}
+                  {isProcessingTopUp
+                    ? (isStaking ? "Processing & Staking..." : "Processing Transfer...")
+                    : (savingPlan.isStaking ? "Confirm Transfer & Staking" : "Confirm Transfer")}
                 </h3>
-                <p className="text-white/70">
+
+                <div className="text-white/70">
                   {isProcessingTopUp ? (
-                    "Processing your transfer..."
+                    <div className="space-y-2">
+                      <p>{stakingProgress}</p>
+                      {isStaking && (
+                        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                          <p className="text-green-400 text-sm">
+                            🔄 Auto-staking in progress...
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   ) : (
-                    <>
-                      Transfer{" "}
-                      <span className="text-white font-semibold">
-                        {topUpAmount} ICP
-                      </span>{" "}
-                      to your savings plan?
-                      <br />
-                      <span className="text-white/50 text-sm">
+                    <div className="space-y-3">
+                      <p>
+                        Transfer{" "}
+                        <span className="text-white font-semibold">
+                          {topUpAmount} ICP
+                        </span>{" "}
+                        to your savings plan
+                      </p>
+                      <p className="text-white/50 text-sm">
                         ≈ ${formatUSD(Number(topUpAmount))} USD
-                      </span>
-                    </>
+                      </p>
+
+                      {savingPlan.isStaking && (
+                        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                          <div className="flex items-center justify-center space-x-2">
+                            <Shield size={16} className="text-green-400" />
+                            <span className="text-green-400 text-sm">
+                              Funds will be automatically staked after transfer
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
-                </p>
+                </div>
               </div>
 
               {!isProcessingTopUp && (
@@ -1291,7 +1345,9 @@ function SavingsPlanDetailsContent() {
                     shimmerColor="#ffffff"
                     shimmerSize="0.1em"
                   >
-                    <span className="text-white">Confirm</span>
+                    <span className="text-white">
+                      {savingPlan.isStaking ? "Transfer & Stake" : "Confirm"}
+                    </span>
                   </ShimmerButton>
                 </div>
               )}
@@ -1317,87 +1373,86 @@ function SavingsPlanDetailsContent() {
             >
               <div className="text-center mb-6">
                 {isProcessingWithdraw ? (
-                  <Loader
-                    size={48}
-                    className="text-white mx-auto mb-4 animate-spin"
-                  />
+                  <div className="mb-4">
+                    <Loader
+                      size={48}
+                      className="text-white mx-auto mb-4 animate-spin"
+                    />
+                    {isUnstaking && (
+                      <Shield size={24} className="text-orange-400 mx-auto mb-2" />
+                    )}
+                  </div>
                 ) : (
                   <div className="mb-4">
                     {isForceWithdraw ? (
-                      <AlertTriangle
-                        size={48}
-                        className="text-orange-400 mx-auto"
-                      />
+                      <AlertTriangle size={48} className="text-orange-400 mx-auto" />
                     ) : (
-                      <CheckCircle
-                        size={48}
-                        className="text-blue-400 mx-auto"
-                      />
+                      <CheckCircle size={48} className="text-blue-400 mx-auto" />
                     )}
                   </div>
                 )}
                 <h3 className="text-white text-2xl font-bold mb-2">
                   {isProcessingWithdraw
-                    ? "Processing Withdrawal..."
+                    ? (isUnstaking ? "Processing Unstaking & Withdrawal..." : "Processing Withdrawal...")
                     : "Confirm Withdrawal"}
                 </h3>
 
+                {isProcessingWithdraw && (
+                  <div className="space-y-2">
+                    <p className="text-white/70">{unstakingProgress}</p>
+                    {isUnstaking && savingPlan.isStaking && (
+                      <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                        <p className="text-orange-400 text-sm">
+                          🔄 Auto-unstaking in progress...
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {!isProcessingWithdraw && (
                   <div className="space-y-3">
+                    {/* Unstaking warning for staked savings */}
+                    {savingPlan.isStaking && (
+                      <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl">
+                        <div className="flex items-start space-x-3">
+                          <Shield size={20} className="text-orange-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="text-orange-400 font-medium text-sm mb-1">Auto-Unstaking Required</h4>
+                            <p className="text-orange-200 text-xs">
+                              Your staked funds will be automatically unstaked before withdrawal. This may take some time to process.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="p-4 bg-white/5 rounded-xl text-left space-y-2">
                       <div className="flex justify-between text-white/70 text-sm">
                         <span>Withdrawal Amount:</span>
                         <span className="text-white">{withdrawAmount} ICP</span>
                       </div>
                       <div className="flex justify-between text-white/70 text-sm">
-                        <span>
-                          Admin Fee ({isForceWithdraw ? "5%" : "2%"}):
-                        </span>
-                        <span className="text-red-400">
-                          -
-                          {formatICP(
-                            calculateAdminFee(
-                              Number(withdrawAmount),
-                              isForceWithdraw
-                            )
-                          )}{" "}
-                          ICP
-                        </span>
+                        <span>Admin Fee ({isForceWithdraw ? '5%' : '2%'}):</span>
+                        <span className="text-red-400">-{formatICP(calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP</span>
                       </div>
                       <div className="border-t border-white/10 pt-2">
                         <div className="flex justify-between text-white font-medium">
-                          <span>You&apos;ll Receive:</span>
+                          <span>You'll Receive:</span>
                           <span className="text-green-400">
-                            {formatICP(
-                              Number(withdrawAmount) -
-                                calculateAdminFee(
-                                  Number(withdrawAmount),
-                                  isForceWithdraw
-                                )
-                            )}{" "}
-                            ICP
+                            {formatICP(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP
                           </span>
                         </div>
                         <div className="flex justify-between text-white/50 text-xs">
                           <span>≈ USD:</span>
-                          <span>
-                            $
-                            {formatUSD(
-                              Number(withdrawAmount) -
-                                calculateAdminFee(
-                                  Number(withdrawAmount),
-                                  isForceWithdraw
-                                )
-                            )}
-                          </span>
+                          <span>${formatUSD(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))}</span>
                         </div>
                       </div>
                     </div>
 
                     {isForceWithdraw && (
                       <p className="text-orange-400 text-sm">
-                        ⚠️ Early withdrawal penalty applied due to withdrawal
-                        before target date
+                        ⚠️ Early withdrawal penalty applied due to withdrawal before target date
                       </p>
                     )}
                   </div>
@@ -1415,18 +1470,12 @@ function SavingsPlanDetailsContent() {
                   <ShimmerButton
                     className="flex-1 py-3"
                     onClick={handleFinalWithdrawConfirm}
-                    background={
-                      isForceWithdraw
-                        ? "rgba(249, 115, 22, 0.3)"
-                        : "rgba(59, 130, 246, 0.3)"
-                    }
+                    background={isForceWithdraw ? "rgba(249, 115, 22, 0.3)" : "rgba(59, 130, 246, 0.3)"}
                     shimmerColor="#ffffff"
                     shimmerSize="0.1em"
                   >
                     <span className="text-white">
-                      {isForceWithdraw
-                        ? "Confirm Force Withdrawal"
-                        : "Confirm Withdrawal"}
+                      {isForceWithdraw ? "Confirm Force Withdrawal" : "Confirm Withdrawal"}
                     </span>
                   </ShimmerButton>
                 </div>
@@ -1458,4 +1507,4 @@ export default function SavingsPlanDetails() {
 }
 
 // Force dynamic rendering to handle searchParams
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
