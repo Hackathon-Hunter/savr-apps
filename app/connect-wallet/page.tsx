@@ -11,11 +11,14 @@ import {
   ArrowRight,
   AlertCircle,
   CheckCircle,
+  ArrowLeft,
+  Sparkles,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 export default function ConnectInternetIdentity() {
   const router = useRouter();
@@ -66,6 +69,10 @@ export default function ConnectInternetIdentity() {
       console.error("Logout failed:", error);
       setAuthError("Failed to logout. Please try again.");
     }
+  };
+
+  const handleBack = () => {
+    router.back();
   };
 
   const getButtonContent = () => {
@@ -140,20 +147,73 @@ export default function ConnectInternetIdentity() {
   };
 
   return (
-    <div className="relative min-h-screen w-screen overflow-hidden bg-gradient-to-br from-purple-50 via-white to-blue-50">
-      {/* Modern Colorful Background */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-blue-400/20 to-cyan-400/20 rounded-full blur-3xl" />
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-to-br from-green-400/15 to-emerald-400/15 rounded-full blur-3xl" />
+    <div className="relative min-h-screen w-screen overflow-hidden bg-white">
+      {/* Colorful Background Gradient - Same as landing page */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50" />
+
+      {/* Secondary Gradient Layer */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-violet-100/30 via-transparent to-indigo-100/40" />
+
+      {/* Enhanced Blob Shapes - Same as landing page */}
+      <div className="absolute inset-0">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-purple-200/50 to-violet-300/40 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-to-r from-blue-200/60 to-indigo-300/50 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-gradient-to-r from-pink-200/40 to-purple-300/50 rounded-full blur-2xl animate-pulse delay-500" />
+        <div className="absolute top-3/4 left-1/3 w-72 h-72 bg-gradient-to-r from-cyan-200/30 to-blue-300/40 rounded-full blur-3xl animate-pulse delay-700" />
+      </div>
+
+      {/* Colorful Mesh Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-purple-100/20 via-transparent to-blue-50/30" />
+
+      {/* Enhanced Floating Elements */}
+      <div className="absolute inset-0">
+        {[...Array(15)].map((_, i) => (
+          <div
+            key={i}
+            className={`absolute w-2 h-2 rounded-full animate-pulse ${
+              i % 3 === 0
+                ? "bg-purple-300/60"
+                : i % 3 === 1
+                ? "bg-blue-300/60"
+                : "bg-pink-300/60"
+            }`}
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 4}s`,
+              animationDuration: `${3 + Math.random() * 2}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Back Navigation */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="absolute top-8 left-8 z-20"
+      >
+        <button
+          onClick={handleBack}
+          className="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors duration-300 group bg-white/80 backdrop-blur-sm border border-purple-200/30 rounded-full px-4 py-2 shadow-sm"
+        >
+          <ArrowLeft
+            size={16}
+            className="group-hover:-translate-x-1 transition-transform duration-300"
+          />
+          <span className="text-sm font-medium">Back</span>
+        </button>
+      </motion.div>
 
       {/* Colorful Particles Background */}
       <div className="absolute inset-0 z-0">
         <Particles
           particleColors={["#8b5cf6", "#06b6d4", "#ec4899", "#f59e0b"]}
-          particleCount={40}
+          particleCount={50}
           particleSpread={8}
-          speed={0.015}
-          particleBaseSize={30}
+          speed={0.02}
+          particleBaseSize={40}
           moveParticlesOnHover={true}
           alphaParticles={true}
           disableRotation={false}
@@ -163,7 +223,7 @@ export default function ConnectInternetIdentity() {
       {/* Main Content */}
       <div className="relative z-10 flex justify-center items-center min-h-screen px-4 py-20">
         <div className="w-full max-w-md">
-          {/* Modern Header */}
+          {/* Header - Light theme style */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -171,12 +231,22 @@ export default function ConnectInternetIdentity() {
             className="text-center mb-12"
           >
             <div className="flex justify-center mb-6">
-              <div className="relative">
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                className="relative"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/30 to-pink-500/30 rounded-3xl blur-2xl opacity-60"></div>
                 <div className="relative w-20 h-20 bg-gradient-to-br from-purple-600 to-pink-600 rounded-3xl flex items-center justify-center shadow-xl shadow-purple-500/20">
                   <Fingerprint size={36} className="text-white" />
                 </div>
-              </div>
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+                  className="absolute inset-0 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-3xl"
+                />
+              </motion.div>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
               <span className="bg-gradient-to-r from-gray-800 via-purple-600 to-pink-600 bg-clip-text text-transparent">
@@ -243,7 +313,7 @@ export default function ConnectInternetIdentity() {
             </motion.div>
           )}
 
-          {/* Internet Identity Card */}
+          {/* Internet Identity Card - Light theme */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -301,18 +371,15 @@ export default function ConnectInternetIdentity() {
               {/* Action Buttons */}
               <div className="space-y-4">
                 {/* Main Auth Button */}
-                <ShimmerButton
-                  background="#ffffff"
-                  shimmerColor="#0a0a0a"
-                  shimmerSize="0.05em"
-                  className="w-full rounded-2xl py-5"
+                <Button
+                  className="w-full rounded-2xl py-10 bg-purple-100"
                   onClick={handleAuthenticate}
                   disabled={isAuthenticating || isLoading || authSuccess}
                 >
                   <div className="flex items-center justify-center space-x-3">
                     {getButtonContent()}
                   </div>
-                </ShimmerButton>
+                </Button>
 
                 {/* Logout Button (only show if authenticated) */}
                 {isAuthenticated && !authSuccess && (
@@ -345,7 +412,7 @@ export default function ConnectInternetIdentity() {
             </div>
           </motion.div>
 
-          {/* How It Works Section */}
+          {/* How It Works Section - Light theme */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -353,8 +420,9 @@ export default function ConnectInternetIdentity() {
             className="mb-8"
           >
             <div className="bg-white/90 backdrop-blur-xl border border-gray-200 rounded-3xl p-8 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-500">
-              <h4 className="text-gray-800 font-semibold text-xl mb-4 text-center">
-                How Internet Identity Works
+              <h4 className="text-gray-800 font-semibold text-xl mb-6 text-center flex items-center justify-center space-x-2">
+                <Sparkles size={20} className="text-purple-600" />
+                <span>How Internet Identity Works</span>
               </h4>
               <ol className="space-y-4">
                 <li className="flex items-start space-x-3 text-gray-700">
@@ -395,7 +463,7 @@ export default function ConnectInternetIdentity() {
             </div>
           </motion.div>
 
-          {/* New User Section */}
+          {/* New User Section - Light theme */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -415,16 +483,19 @@ export default function ConnectInternetIdentity() {
                   href="https://identity.ic0.app/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center space-x-2 text-purple-600 hover:text-purple-800 transition-colors duration-300"
+                  className="flex items-center space-x-2 text-purple-600 hover:text-purple-800 transition-colors duration-300 group"
                 >
                   <span>Learn more</span>
-                  <ArrowRight size={14} />
+                  <ArrowRight
+                    size={14}
+                    className="group-hover:translate-x-1 transition-transform duration-300"
+                  />
                 </a>
               </div>
             </div>
           </motion.div>
 
-          {/* Security Notice */}
+          {/* Security Notice - Light theme */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -445,11 +516,11 @@ export default function ConnectInternetIdentity() {
             </div>
           </motion.div>
 
-          {/* Modern Bottom Decorative Element */}
+          {/* Light theme Bottom Decorative Element */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1, delay: 0.8 }}
+            transition={{ duration: 1, delay: 1 }}
             className="flex justify-center mt-12"
           >
             <div className="flex items-center space-x-3">
@@ -461,8 +532,8 @@ export default function ConnectInternetIdentity() {
         </div>
       </div>
 
-      {/* Modern Bottom Fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white/80 via-slate-50/20 to-transparent pointer-events-none" />
+      {/* Light theme Bottom Fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white/80 via-purple-50/20 to-transparent pointer-events-none" />
     </div>
   );
 }
