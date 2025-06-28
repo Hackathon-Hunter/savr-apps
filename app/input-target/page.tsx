@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import {
   Target,
   DollarSign,
   Brain,
-  Sparkles,
   ArrowLeft,
   ChevronRight,
 } from "lucide-react";
@@ -18,50 +16,57 @@ import { useSavingsAnalysis } from "@/contexts/SavingsAnalysisContext";
 
 export default function InputTarget() {
   const router = useRouter();
-  const { setAnalysisData, setUserInput, icpToUsdRate } = useSavingsAnalysis();
+  const { 
+    analyzeTarget, 
+    loadSuggestions, 
+    suggestions, 
+    isAnalyzing, 
+    isLoadingSuggestions,
+    analysisError,
+    suggestionsError,
+    icpToUsdRate 
+  } = useSavingsAnalysis();
+  
   const [target, setTarget] = useState("");
   const [monthlyIncome, setMonthlyIncome] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errors, setErrors] = useState({ target: "", income: "" });
-  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
   const [showLoader, setShowLoader] = useState(false);
 
   // Load initial AI suggestions on page load
   useEffect(() => {
+    console.log('============================adasdnakjsndjkanjk, 37')
     const fetchInitialSuggestions = async () => {
-      setLoadingSuggestions(true);
       try {
-        const response = await fetch("/api/get-suggestions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ monthlyIncome: 5000 }), // Use average income for initial suggestions
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setAiSuggestions(data.suggestions || []);
-        }
+        await loadSuggestions(5000); // Use average income for initial suggestions
       } catch (error) {
         console.error("Error fetching initial suggestions:", error);
-        // Fallback to default suggestions
-        setAiSuggestions([
-          "Emergency fund (6 months)",
-          "New car purchase",
-          "Dream vacation",
-          "House down payment",
-          "Investment account",
-          "Education fund",
-        ]);
-      } finally {
-        setLoadingSuggestions(false);
       }
     };
 
     fetchInitialSuggestions();
   }, []);
+
+  // Update suggestions when income changes
+  const handleIncomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMonthlyIncome(value);
+    
+    // Clear income error when user starts typing
+    if (errors.income) {
+      setErrors(prev => ({ ...prev, income: "" }));
+    }
+  };
+
+  const handleOnBlurIncome = async () => {
+    const income = Number(monthlyIncome);
+    if (income > 0) {
+      try {
+        await loadSuggestions(income);
+      } catch (error) {
+        console.error("Error loading income-based suggestions:", error);
+      }
+    }
+  };
 
   const validateForm = () => {
     const newErrors = { target: "", income: "" };
@@ -87,37 +92,14 @@ export default function InputTarget() {
   const handleAnalyze = async () => {
     if (!validateForm()) return;
 
-    setIsAnalyzing(true);
     setShowLoader(true);
     const loaderStartTime = Date.now();
 
     try {
-      // Store user input
       const monthlyIncomeUsd = Number(monthlyIncome);
-      setUserInput({
-        target,
-        monthlyIncome: monthlyIncomeUsd,
-      });
-
-      // Get AI analysis from ChatGPT via API
-      const response = await fetch("/api/analyze-savings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          target,
-          monthlyIncome: monthlyIncomeUsd,
-          icpToUsdRate,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to analyze savings goal");
-      }
-
-      const analysis = await response.json();
-      setAnalysisData(analysis);
+      
+      // Use the context's analyzeTarget function
+      await analyzeTarget(target, monthlyIncomeUsd, icpToUsdRate);
 
       // Keep the loader visible for a moment before navigating
       // Ensure the loader is visible for at least 2 seconds for better UX
@@ -126,18 +108,24 @@ export default function InputTarget() {
       const remainingTime = Math.max(0, minLoaderTime - timeElapsed);
       
       setTimeout(() => {
-        setIsAnalyzing(false);
         setShowLoader(false);
         router.push("analysis-results");
       }, remainingTime);
     } catch (error) {
       console.error("Error during analysis:", error);
-      setIsAnalyzing(false);
       setShowLoader(false);
-      // You could show an error message to the user here
+      // Show error message to the user
       alert(
         "Sorry, there was an error analyzing your savings goal. Please try again."
       );
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setTarget(suggestion);
+    // Clear target error when user selects a suggestion
+    if (errors.target) {
+      setErrors(prev => ({ ...prev, target: "" }));
     }
   };
 
@@ -145,103 +133,79 @@ export default function InputTarget() {
     router.back();
   };
 
-  // Fetch AI-generated suggestions based on income
-  const fetchAISuggestions = async (income: number) => {
-    if (income <= 0) return;
-
-    setLoadingSuggestions(true);
-    try {
-      const response = await fetch("/api/get-suggestions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ monthlyIncome: income }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAiSuggestions(data.suggestions || []);
-      }
-    } catch (error) {
-      console.error("Error fetching suggestions:", error);
-      // Fallback to default suggestions
-      setAiSuggestions([
-        "Emergency fund",
-        "New car",
-        "Vacation fund",
-        "Home down payment",
-        "Investment account",
-        "Education fund",
-      ]);
-    } finally {
-      setLoadingSuggestions(false);
-    }
-  };
-
-  // Fetch suggestions when income changes
-  const handleIncomeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setMonthlyIncome(value);
-  };
-
-  const handleOnBlurIncome = () => {
-    fetchAISuggestions(Number(monthlyIncome));
-  };
+  // Show loader overlay
+  if (showLoader || isAnalyzing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center relative overflow-hidden">
+        <Particles className="absolute inset-0 opacity-40" />
+        
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center z-10 bg-white/90 backdrop-blur-xl border border-gray-200 rounded-3xl p-12 shadow-2xl shadow-purple-500/20"
+        >
+          <div className="relative mb-8">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/30 to-pink-500/30 rounded-3xl blur-2xl opacity-60"></div>
+            <div className="relative w-20 h-20 bg-gradient-to-br from-purple-600 to-pink-600 rounded-3xl flex items-center justify-center shadow-xl shadow-purple-500/20 mx-auto">
+              <Brain size={36} className="text-white animate-pulse" />
+            </div>
+          </div>
+          
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">
+            <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              AI is Analyzing
+            </span>
+          </h2>
+          <p className="text-gray-600 mb-8 text-lg">
+            Creating your personalized savings strategy...
+          </p>
+          
+          <div className="flex justify-center space-x-2">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="w-3 h-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                animate={{
+                  scale: [1, 1.2, 1],
+                  opacity: [0.5, 1, 0.5],
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  delay: i * 0.2,
+                }}
+              />
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative min-h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      {/* Modern Colorful Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-blue-50" />
-      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-blue-400/20 to-cyan-400/20 rounded-full blur-3xl" />
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-to-br from-green-400/15 to-emerald-400/15 rounded-full blur-3xl" />
-
-      {/* Modern Breadcrumb Navigation */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="absolute top-8 left-8 z-20"
-      >
-        <div className="flex items-center space-x-3 bg-white/80 backdrop-blur-xl border border-gray-200 rounded-2xl px-6 py-3 shadow-lg shadow-purple-500/5">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 relative overflow-hidden">
+      <Particles className="absolute inset-0 opacity-40" />
+      
+      <div className="relative z-10 container mx-auto px-4 py-12">
+        {/* Header with Back Button */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center mb-8"
+        >
           <button
             onClick={handleBack}
-            className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 transition-colors duration-300 group"
+            className="group flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors duration-300 bg-white/80 backdrop-blur-xl border border-gray-200 rounded-2xl px-4 py-3 hover:border-purple-300 hover:shadow-lg hover:shadow-purple-500/10"
           >
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 group-hover:bg-purple-500/20 group-hover:text-purple-700 transition-all duration-300">
-              <ArrowLeft
-                size={16}
-                className="group-hover:-translate-x-1 transition-transform duration-300"
-              />
-            </div>
-            <span className="text-sm font-semibold">Dashboard</span>
+            <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform duration-300" />
+            <span className="font-medium">Back</span>
           </button>
-          <ChevronRight size={16} className="text-gray-400" />
-          <span className="text-sm text-gray-600 font-medium">Input Savings</span>
-        </div>
-      </motion.div>
+        </motion.div>
 
-      {/* Colorful Particles Background */}
-      <div className="absolute inset-0 z-0">
-        <Particles
-          particleColors={["#8b5cf6", "#06b6d4", "#ec4899", "#f59e0b"]}
-          particleCount={40}
-          particleSpread={8}
-          speed={0.015}
-          particleBaseSize={30}
-          moveParticlesOnHover={true}
-          alphaParticles={true}
-          disableRotation={false}
-        />
-      </div>
-
-      {/* Main Content */}
-      <div className="relative z-10 flex justify-center items-center min-h-screen px-4 py-20">
-        <div className="w-full max-w-[80%]">
-          {/* Modern Header */}
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             className="text-center mb-12"
@@ -287,6 +251,7 @@ export default function InputTarget() {
                   </span>
                   <input
                     type="number"
+                    autoFocus
                     value={monthlyIncome}
                     onChange={handleIncomeChange}
                     onBlur={handleOnBlurIncome}
@@ -320,7 +285,13 @@ export default function InputTarget() {
                 <input
                   type="text"
                   value={target}
-                  onChange={(e) => setTarget(e.target.value)}
+                  onChange={(e) => {
+                    setTarget(e.target.value);
+                    // Clear target error when user starts typing
+                    if (errors.target) {
+                      setErrors(prev => ({ ...prev, target: "" }));
+                    }
+                  }}
                   placeholder="e.g., New car, Dream vacation, Emergency fund..."
                   className="w-full bg-gradient-to-br from-purple-50/80 to-pink-50/80 border border-purple-200/50 rounded-2xl px-6 py-4 text-gray-800 text-lg placeholder:text-gray-400 focus:outline-none focus:border-purple-400 focus:bg-purple-50 focus:shadow-lg focus:shadow-purple-500/10 transition-all duration-300"
                 />
@@ -342,17 +313,17 @@ export default function InputTarget() {
                       <Brain size={14} className="text-white" />
                     </div>
                     <p className="text-gray-700 text-sm font-semibold">
-                      {loadingSuggestions
+                      {isLoadingSuggestions
                         ? "AI is thinking..."
-                        : aiSuggestions.length > 0 && monthlyIncome
+                        : suggestions.length > 0 && monthlyIncome
                         ? "AI suggests for your income:"
-                        : aiSuggestions.length > 0
+                        : suggestions.length > 0
                         ? "AI suggests:"
                         : "Popular targets:"}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    {loadingSuggestions
+                    {isLoadingSuggestions
                       ? // Modern Loading skeleton
                         Array.from({ length: 4 }, (_, index) => (
                           <div
@@ -360,169 +331,103 @@ export default function InputTarget() {
                             className="h-10 w-20 bg-gradient-to-r from-blue-200/60 to-cyan-200/60 rounded-2xl animate-pulse"
                           />
                         ))
-                      : aiSuggestions.length > 0
-                      ? // Modern AI generated suggestions
-                        aiSuggestions
-                          .slice(0, 6)
-                          .map((suggestion: string, index: number) => (
-                            <button
-                              key={index}
-                              onClick={() => setTarget(suggestion)}
-                              className="px-4 py-2 bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200/50 rounded-2xl text-blue-700 text-sm font-medium hover:from-blue-100 hover:to-cyan-100 hover:border-blue-300 hover:text-blue-800 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300"
-                            >
-                              {suggestion}
-                            </button>
-                          ))
-                      : // Modern Default fallback suggestions
+                      : suggestions.length > 0
+                      ? suggestions.map((suggestion, index) => (
+                          <motion.button
+                            key={index}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: index * 0.1 }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleSuggestionClick(suggestion)}
+                            className="group relative px-4 py-2 bg-gradient-to-r from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 border border-blue-200/50 rounded-2xl text-blue-700 text-sm font-medium transition-all duration-300 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/10"
+                          >
+                            <span className="relative z-10">{suggestion}</span>
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 to-cyan-500/0 group-hover:from-blue-500/5 group-hover:to-cyan-500/5 rounded-2xl transition-all duration-300" />
+                          </motion.button>
+                        ))
+                      : // Fallback suggestions if AI fails
                         [
                           "Emergency fund",
                           "New car",
                           "Dream vacation",
-                          "Investment account",
-                          "Home down payment",
-                          "Education fund",
-                        ].map((suggestion: string, index: number) => (
-                          <button
+                          "Investment fund",
+                        ].map((suggestion, index) => (
+                          <motion.button
                             key={index}
-                            onClick={() => setTarget(suggestion)}
-                            className="px-4 py-2 bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200/50 rounded-2xl text-blue-700 text-sm font-medium hover:from-blue-100 hover:to-cyan-100 hover:border-blue-300 hover:text-blue-800 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: index * 0.1 }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleSuggestionClick(suggestion)}
+                            className="group relative px-4 py-2 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 border border-gray-200/50 rounded-2xl text-gray-700 text-sm font-medium transition-all duration-300 hover:border-gray-300 hover:shadow-lg"
                           >
-                            {suggestion}
-                          </button>
+                            <span className="relative z-10">{suggestion}</span>
+                          </motion.button>
                         ))}
                   </div>
+                  
+                  {/* Show error if suggestions failed to load */}
+                  {suggestionsError && (
+                    <motion.p
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-amber-600 text-sm mt-3 font-medium flex items-center space-x-2"
+                    >
+                      <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                      <span>Using fallback suggestions</span>
+                    </motion.p>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Modern AI Analysis Button */}
+            {/* Analyze Button */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
-              className="pt-4"
+              className="flex justify-center pt-4"
             >
               <ShimmerButton
-                className="w-full py-5 text-xl font-semibold"
                 onClick={handleAnalyze}
                 disabled={isAnalyzing}
-                background="linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)"
-                shimmerColor="#ffffff"
-                shimmerSize="0.05em"
+                className="group relative w-full md:w-auto"
               >
-                <div className="flex items-center justify-center space-x-4">
-                  {isAnalyzing ? (
-                    <>
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{
-                          duration: 2,
-                          repeat: Number.POSITIVE_INFINITY,
-                          ease: "linear",
-                        }}
-                      >
-                        <Brain size={24} className="text-white" />
-                      </motion.div>
-                      <span className="text-white">AI is analyzing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={24} className="text-white" />
-                      <span className="text-white">Analyze with AI</span>
-                    </>
-                  )}
+                <div className="flex items-center justify-center space-x-3 px-8 py-4">
+                  <Brain
+                    size={20}
+                    className="group-hover:rotate-12 transition-transform duration-300"
+                  />
+                  <span className="text-lg font-semibold">
+                    {isAnalyzing ? "Analyzing..." : "Analyze with AI"}
+                  </span>
+                  <ChevronRight
+                    size={20}
+                    className="group-hover:translate-x-1 transition-transform duration-300"
+                  />
                 </div>
               </ShimmerButton>
             </motion.div>
-          </motion.div>
-
-          {/* Modern Info Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="mt-10"
-          >
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-400/10 to-amber-400/10 rounded-3xl blur-xl opacity-60"></div>
-              <div className="relative bg-white/80 backdrop-blur-xl border border-orange-200/50 rounded-3xl p-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center flex-shrink-0">
-                    <Brain size={20} className="text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-gray-800 font-semibold text-lg mb-2 bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                      AI-Powered Analysis
-                    </h3>
-                    <p className="text-gray-600 text-sm leading-relaxed">
-                      Our advanced AI will analyze your target and income to create a 
-                      personalized savings plan with smart recommendations, timeline 
-                      predictions, and optimized strategies for your financial goals.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Modern Bottom Decorative Element */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1, delay: 0.8 }}
-            className="flex justify-center mt-12"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="w-3 h-3 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-pulse"></div>
-              <div className="w-32 h-1 bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 rounded-full" />
-              <div className="w-3 h-3 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full animate-pulse delay-300"></div>
-            </div>
+            
+            {/* Show analysis error if any */}
+            {analysisError && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 p-4 bg-red-50 border border-red-200 rounded-2xl"
+              >
+                <p className="text-red-600 text-sm font-medium flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <span>{analysisError}</span>
+                </p>
+              </motion.div>
+            )}
           </motion.div>
         </div>
       </div>
-
-      {/* Modern Bottom Fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white/80 via-slate-50/20 to-transparent pointer-events-none" />
-
-      {/* ICP Loader Overlay */}
-      {showLoader && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ 
-              opacity: 1, 
-              scale: 1,
-              rotate: [0, 5, -5, 3, -3, 0],
-              y: [0, -10, 0, -7, 0]
-            }}
-            transition={{ 
-              duration: 4,
-              repeat: Infinity,
-              repeatType: "reverse",
-              ease: "easeInOut"
-            }}
-            className="relative"
-          >
-            <Image
-              src="/icp-loader.svg"
-              alt="Loading"
-              width={100}
-              height={100}
-              className="transform"
-              priority
-            />
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-            className="mt-16 text-white text-center"
-          >
-            <p className="text-xl font-medium">AI Analysis in progress...</p>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 }
