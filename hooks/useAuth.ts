@@ -24,6 +24,9 @@ export const useAuth = () => {
   });
 
   const updateActor = useCallback(async () => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
     try {
       const authClient = await AuthClient.create();
       const identity = authClient.getIdentity();
@@ -53,6 +56,12 @@ export const useAuth = () => {
   }, []);
 
   const initializeAuth = useCallback(async () => {
+    // Only run on client side
+    if (typeof window === 'undefined') {
+      setState((prev) => ({ ...prev, isLoading: false }));
+      return;
+    }
+    
     try {
       setState((prev) => ({ ...prev, isLoading: true }));
       await updateActor();
@@ -68,6 +77,9 @@ export const useAuth = () => {
   }, [initializeAuth]);
 
   const login = async () => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
     try {
       if (!state.authClient) {
         throw new Error("Auth client not initialized");
@@ -87,6 +99,9 @@ export const useAuth = () => {
   };
 
   const logout = async () => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
     try {
       if (!state.authClient) {
         throw new Error("Auth client not initialized");

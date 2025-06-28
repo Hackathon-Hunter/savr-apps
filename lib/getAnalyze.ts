@@ -29,6 +29,13 @@ const getAnalyzeResult = async (
   monthlyIncomeUsd: number,
   icpToUsdRate: number = 12.45
 ) => {
+  // Get API key from environment variables
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("API key not found. Please set OPENROUTER_API_KEY or OPENAI_API_KEY in your environment variables.");
+  }
+
   const monthlyIncomeIcp = monthlyIncomeUsd / icpToUsdRate;
   const promptMessage = `You are a smart financial advisor AI. Analyze this savings goal and be intelligent about it. Target: ${target} Monthly Income: $${monthlyIncomeUsd} USD (${monthlyIncomeIcp.toFixed(
     2
@@ -39,8 +46,7 @@ const getAnalyzeResult = async (
     {
       method: "POST",
       headers: {
-        Authorization:
-          "Bearer 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",
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

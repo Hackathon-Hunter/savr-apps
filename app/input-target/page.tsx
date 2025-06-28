@@ -14,13 +14,13 @@ import {
 import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
-import { useSavingsAnalysis } from "@/contexts/SavingsAnalysisContext";
+import { useSavingsAnalysis } from "@/hooks/useSavingsAnalysis";
 import { getSuggestions } from "@/lib/getSuggestions";
 import { getAnalyzeResult } from "@/lib/getAnalyze";
 
 export default function InputTarget() {
   const router = useRouter();
-  const { setAnalysisData, setUserInput, icpToUsdRate } = useSavingsAnalysis();
+  const { setAnalysisData, setUserInput, icpToUsdRate, isLoaded } = useSavingsAnalysis();
   const [target, setTarget] = useState("");
   const [monthlyIncome, setMonthlyIncome] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -31,6 +31,8 @@ export default function InputTarget() {
 
   // Load initial AI suggestions on page load
   useEffect(() => {
+    if (!isLoaded) return;
+    
     const fetchInitialSuggestions = async () => {
       setLoadingSuggestions(true);
       const data = await getSuggestions(Number(monthlyIncome));
@@ -40,7 +42,7 @@ export default function InputTarget() {
     };
 
     fetchInitialSuggestions();
-  }, []);
+  }, [isLoaded]);
 
   const validateForm = () => {
     const newErrors = { target: "", income: "" };

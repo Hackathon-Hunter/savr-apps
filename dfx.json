@@ -6,5 +6,15 @@
       "type": "assets"
     }
   },
-  "output_env_file": ".env"
+  "output_env_file": ".env",
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:8000",
+      "type": "ephemeral"
+    },
+    "ic": {
+      "providers": ["https://ic0.app"],
+      "type": "persistent"
+    }
+  }
 }

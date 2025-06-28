@@ -16,11 +16,11 @@ import {
 import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
-import { useSavingsAnalysis } from "@/contexts/SavingsAnalysisContext";
+import { useSavingsAnalysis } from "@/hooks/useSavingsAnalysis";
 
 export default function CustomizePlan() {
   const router = useRouter();
-  const { analysisData, userInput, icpToUsdRate } = useSavingsAnalysis();
+  const { analysisData, userInput, icpToUsdRate, isLoaded } = useSavingsAnalysis();
 
   // Get plan ID from URL on client side only
   const [planId, setPlanId] = useState<string | null>(null);
@@ -35,10 +35,10 @@ export default function CustomizePlan() {
 
   // Redirect if no analysis data
   useEffect(() => {
-    if (!analysisData || !userInput) {
+    if (isLoaded && (!analysisData || !userInput)) {
       router.push("/input-target");
     }
-  }, [analysisData, userInput, router]);
+  }, [analysisData, userInput, router, isLoaded]);
 
   // Initialize form state with analysis data
   const [planData, setPlanData] = useState({
@@ -54,7 +54,7 @@ export default function CustomizePlan() {
 
   // Update form data when analysis data is available
   useEffect(() => {
-    if (analysisData && userInput) {
+    if (analysisData && userInput && isLoaded) {
       // Get AI's priority recommendation (use the highest priority from recommendations)
       const aiPriority =
         analysisData.recommendations.length > 0
@@ -72,7 +72,21 @@ export default function CustomizePlan() {
         emergencyBuffer: true,
       });
     }
-  }, [analysisData, userInput, icpToUsdRate]);
+  }, [analysisData, userInput, icpToUsdRate, isLoaded]);
+
+  // Show loading if data is not loaded yet
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-16 h-16 border-4 border-t-purple-500 border-r-transparent border-b-purple-500 border-l-transparent rounded-full animate-spin"></div>
+          <div className="text-gray-800 text-xl font-medium">
+            Loading plan data...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Show loading if no data yet
   if (!analysisData || !userInput) {
@@ -81,7 +95,7 @@ export default function CustomizePlan() {
         <div className="flex flex-col items-center space-y-4">
           <div className="w-16 h-16 border-4 border-t-purple-500 border-r-transparent border-b-purple-500 border-l-transparent rounded-full animate-spin"></div>
           <div className="text-gray-800 text-xl font-medium">
-            Loading plan data...
+            No plan data found. Redirecting...
           </div>
         </div>
       </div>

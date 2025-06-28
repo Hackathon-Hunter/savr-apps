@@ -53,6 +53,9 @@ export const ICPPriceProvider: React.FC<ICPPriceProviderProps> = ({
   });
 
   const fetchICPPrice = async (): Promise<void> => {
+    // Only fetch on client side
+    if (typeof window === 'undefined') return;
+    
     try {
       setPriceData((prev) => ({ ...prev, isLoading: true, error: null }));
 
@@ -114,22 +117,17 @@ export const ICPPriceProvider: React.FC<ICPPriceProviderProps> = ({
     });
   };
 
-  // Initial fetch
+  // Initial fetch - only on client side
   useEffect(() => {
-    fetchICPPrice();
+    if (typeof window !== 'undefined') {
+      fetchICPPrice();
+    }
   }, []);
-
-  // Set up periodic price updates every 30 seconds
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     fetchICPPrice();
-  //   }, 30000); // 30 seconds
-
-  //   return () => clearInterval(interval);
-  // }, []);
 
   // Set up visibility change listener to refresh when tab becomes active
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         fetchICPPrice();

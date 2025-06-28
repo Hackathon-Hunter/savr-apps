@@ -21,7 +21,7 @@ import {
 import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
-import { useSavingsAnalysis } from "@/contexts/SavingsAnalysisContext";
+import { useSavingsAnalysis } from "@/hooks/useSavingsAnalysis";
 import { useAuth } from "@/hooks/useAuth";
 import { useICPPrice } from "@/contexts/ICPPriceContext";
 import { startSaving } from "@/service/icService";
@@ -29,7 +29,7 @@ import { StartSavingRequest } from "@/service/backend.did";
 
 export default function AnalysisResults() {
   const router = useRouter();
-  const { analysisData, userInput, icpToUsdRate } = useSavingsAnalysis();
+  const { analysisData, userInput, icpToUsdRate, isLoaded } = useSavingsAnalysis();
   const { actor, isAuthenticated, principal } = useAuth();
   const { formatUSD, formatICP, priceData } = useICPPrice();
 
@@ -38,12 +38,17 @@ export default function AnalysisResults() {
   const [createError, setCreateError] = useState<string>("");
   const [createSuccess, setCreateSuccess] = useState(false);
 
-  // Redirect if no analysis data
-  // useEffect(() => {
-  //   if (!analysisData || !userInput) {
-  //     router.push("/input-target");
-  //   }
-  // }, [analysisData, userInput, router]);
+  // Show loading if data is not loaded yet
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-16 h-16 border-4 border-t-purple-500 border-r-transparent border-b-purple-500 border-l-transparent rounded-full animate-spin"></div>
+          <div className="text-gray-800 text-xl font-medium">Loading analysis...</div>
+        </div>
+      </div>
+    );
+  }
 
   // Show loading if no data yet
   if (!analysisData || !userInput) {
@@ -51,7 +56,7 @@ export default function AnalysisResults() {
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <div className="w-16 h-16 border-4 border-t-purple-500 border-r-transparent border-b-purple-500 border-l-transparent rounded-full animate-spin"></div>
-          <div className="text-gray-800 text-xl font-medium">Loading analysis...</div>
+          <div className="text-gray-800 text-xl font-medium">No analysis data found. Redirecting...</div>
         </div>
       </div>
     );

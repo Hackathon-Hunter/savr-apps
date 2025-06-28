@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "export": "next export",
-    "build:ic": "npm run build && npm run export",
+    "build:ic": "npm run build",
+    "deploy": "./scripts/deploy.sh",
     "deploy:local": "dfx deploy --network local",
     "deploy:ic": "dfx deploy --network ic"
   },

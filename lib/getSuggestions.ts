@@ -1,4 +1,11 @@
 const getSuggestions = async (monthlyIncome: number = 1001) => {
+  // Get API key from environment variables
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("API key not found. Please set OPENROUTER_API_KEY or OPENAI_API_KEY in your environment variables.");
+  }
+
   const promptMessage =
     monthlyIncome === 1001
       ? `You are a financial advisor AI. Generate 6 diverse and popular savings targets that most people can relate to. Create a good mix of: - Essential goals (emergency fund, debt payoff) - Lifestyle goals (vacation, car, home) - Investment goals (retirement, education) - Different time horizons (short-term and long-term) Return ONLY a JSON array of strings, nothing else: ["goal 1", "goal 2", "goal 3", "goal 4", "goal 5", "goal 6"] Make them appealing and motivating for a general audience. Examples: Emergency fund, Dream vacation, New car, House down payment, Retirement savings, Wedding fund, etc.`
@@ -9,8 +16,7 @@ const getSuggestions = async (monthlyIncome: number = 1001) => {
     {
       method: "POST",
       headers: {
-        Authorization:
-          "Bearer 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",
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
