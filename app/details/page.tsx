@@ -502,11 +502,25 @@ function SavingsPlanDetailsContent() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="relative min-h-screen w-screen overflow-hidden bg-black flex items-center justify-center">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
-        <div className="text-center">
-          <Loader size={32} className="text-white animate-spin mx-auto mb-4" />
-          <p className="text-white/60">Loading saving plan details...</p>
+      <div className="relative min-h-screen w-screen overflow-hidden bg-gradient-to-br from-purple-50 via-white to-blue-50">
+        {/* Modern Colorful Background */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-blue-400/20 to-cyan-400/20 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-to-br from-green-400/15 to-emerald-400/15 rounded-full blur-3xl" />
+
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <div className="flex flex-col items-center space-y-4">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{
+                duration: 1,
+                repeat: Number.POSITIVE_INFINITY,
+                ease: "linear",
+              }}
+              className="w-16 h-16 border-4 border-t-purple-500 border-r-transparent border-b-purple-500 border-l-transparent rounded-full"
+            />
+            <div className="text-gray-800 text-xl font-medium">Loading savings plan...</div>
+          </div>
         </div>
       </div>
     );
@@ -515,35 +529,21 @@ function SavingsPlanDetailsContent() {
   // Error state
   if (error || !savingPlan) {
     return (
-      <div className="relative min-h-screen w-screen overflow-hidden bg-black flex items-center justify-center">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
-        <div className="text-center max-w-md mx-auto p-6">
-          <AlertCircle size={48} className="text-red-400 mx-auto mb-4" />
-          <h2 className="text-white text-xl font-semibold mb-2">
-            Failed to Load Saving Plan
-          </h2>
-          <p className="text-white/60 mb-6">
-            {error || "Saving plan not found"}
-          </p>
-          <div className="flex gap-4 justify-center">
-            <ShimmerButton
-              className="px-6 py-3"
+      <div className="relative min-h-screen w-screen overflow-hidden bg-gradient-to-br from-purple-50 via-white to-blue-50">
+        {/* Modern Colorful Background */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-blue-400/20 to-cyan-400/20 rounded-full blur-3xl" />
+
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <div className="flex flex-col items-center space-y-4">
+            <AlertCircle className="w-16 h-16 text-red-500" />
+            <div className="text-gray-800 text-xl font-medium">{error}</div>
+            <button
               onClick={handleBack}
-              background="#1f2937"
-              shimmerColor="#ffffff"
-              shimmerSize="0.05em"
+              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
-              <span className="text-white">Back to Dashboard</span>
-            </ShimmerButton>
-            <ShimmerButton
-              className="px-6 py-3"
-              onClick={() => window.location.reload()}
-              background="#ffffff"
-              shimmerColor="#000000"
-              shimmerSize="0.05em"
-            >
-              <span className="text-black">Retry</span>
-            </ShimmerButton>
+              Back to Dashboard
+            </button>
           </div>
         </div>
       </div>
@@ -558,44 +558,71 @@ function SavingsPlanDetailsContent() {
   const isEligibleForNormalWithdraw = isWithdrawalEligible(savingPlan.targetDate);
 
   return (
-    <div className="relative min-h-screen w-screen overflow-hidden bg-black">
-      {/* Background Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
+    <div className="relative min-h-screen w-screen overflow-hidden bg-gradient-to-br from-purple-50 via-white to-blue-50">
+      {/* Modern Colorful Background */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-blue-400/20 to-cyan-400/20 rounded-full blur-3xl" />
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-to-br from-green-400/15 to-emerald-400/15 rounded-full blur-3xl" />
 
-      {/* Particles Background */}
+      {/* Enhanced Floating Elements */}
+      <div className="absolute inset-0">
+        {[...Array(15)].map((_, i) => (
+          <div
+            key={i}
+            className={`absolute w-2 h-2 rounded-full animate-pulse ${i % 3 === 0
+                ? "bg-purple-300/60"
+                : i % 3 === 1
+                  ? "bg-blue-300/60"
+                  : "bg-pink-300/60"
+              }`}
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 4}s`,
+              animationDuration: `${3 + Math.random() * 2}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Colorful Particles Background */}
       <div className="absolute inset-0 z-0">
         <Particles
-          particleColors={["#ffffff", "#ffffff"]}
-          particleCount={80}
-          particleSpread={5}
-          speed={0.04}
-          particleBaseSize={80}
+          particleColors={["#8b5cf6", "#06b6d4", "#ec4899", "#f59e0b"]}
+          particleCount={40}
+          particleSpread={8}
+          speed={0.015}
+          particleBaseSize={30}
           moveParticlesOnHover={true}
           alphaParticles={true}
           disableRotation={false}
         />
       </div>
 
-      {/* Breadcrumb Navigation */}
+      {/* Modern Breadcrumb Navigation */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="absolute top-8 left-8 z-20"
       >
-        <div className="flex items-center space-x-2 text-white/70">
+        <div className="flex items-center space-x-3 bg-white/80 backdrop-blur-xl border border-gray-200 rounded-2xl px-6 py-3 shadow-lg shadow-purple-500/5">
           <button
             onClick={handleBack}
-            className="flex items-center space-x-2 hover:text-white transition-colors duration-300 group"
+            className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 transition-colors duration-300 group"
           >
-            <ArrowLeft
-              size={16}
-              className="group-hover:-translate-x-1 transition-transform duration-300"
-            />
-            <span className="text-sm font-medium">Dashboard</span>
+            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 group-hover:bg-purple-500/20 group-hover:text-purple-700 transition-all duration-300">
+              <ArrowLeft
+                size={16}
+                className="group-hover:-translate-x-1 transition-transform duration-300"
+              />
+            </div>
+            <span className="text-sm font-semibold">Dashboard</span>
           </button>
-          <ChevronRight size={16} className="text-white/40" />
-          <span className="text-sm text-white/60">Savings Plan Details</span>
+          <ChevronRight size={16} className="text-gray-400" />
+          <span className="text-sm text-gray-600 font-medium">Savings Plan</span>
+          <ChevronRight size={16} className="text-gray-400" />
+          <span className="text-sm text-gray-500 font-medium">#{savingPlan.id}</span>
         </div>
       </motion.div>
 
@@ -603,19 +630,15 @@ function SavingsPlanDetailsContent() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
         className="absolute top-8 right-8 z-20"
       >
         <button
           onClick={refreshData}
           disabled={isLoading}
-          className="flex items-center space-x-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl p-3 hover:border-white/20 hover:bg-black/20 transition-all duration-300 disabled:opacity-50"
+          className="p-3 bg-white/80 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-lg shadow-purple-500/5 text-gray-600 hover:text-purple-600 transition-colors duration-300 disabled:opacity-50"
         >
-          <RefreshCw
-            size={16}
-            className={`text-white ${isLoading ? "animate-spin" : ""}`}
-          />
-          <span className="text-white text-sm">Refresh</span>
+          <RefreshCw size={20} className={isLoading ? "animate-spin" : ""} />
         </button>
       </motion.div>
 
@@ -658,76 +681,71 @@ function SavingsPlanDetailsContent() {
       )}
 
       {/* Main Content */}
-      <div className="relative z-10 px-4 py-20">
-        <div className="max-w-5xl mx-auto">
-          {/* Header */}
+      <div className="relative z-10 min-h-screen px-4 py-20">
+        <div className="max-w-6xl mx-auto">
+          {/* Header Section */}
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             className="text-center mb-12"
           >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.5, type: "spring" }}
-              className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-xl border border-white/20 mx-auto mb-6"
-            >
-              <span className="text-4xl">{savingPlan.icon}</span>
-            </motion.div>
-            <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+            <div className="inline-flex gap-2 bg-white/80 backdrop-blur-sm border border-purple-200/30 rounded-full px-4 py-2 mb-6 shadow-sm items-center">
+              <Target className="w-4 h-4 text-purple-500" />
+              <span className="text-lg text-gray-700 font-medium">
+                Savings Plan Details
+              </span>
+            </div>
+
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+              <span className="text-6xl mr-4">{savingPlan.icon}</span>
               {savingPlan.target}
             </h1>
-            <p className="text-white/60 text-lg font-light tracking-wide max-w-2xl mx-auto">
-              Track your progress and manage your savings
+
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Track your progress and manage your savings goal
             </p>
 
-            {/* Status Badge */}
             <div className="mt-4 flex items-center justify-center space-x-4">
-              <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${savingPlan.status === "Active"
-                  ? "bg-blue-500/20 border border-blue-500/30 text-blue-400"
-                  : savingPlan.status === "Completed"
-                    ? "bg-green-500/20 border border-green-500/30 text-green-400"
-                    : "bg-red-500/20 border border-red-500/30 text-red-400"
-                  }`}
-              >
+              <div className={`px-4 py-2 rounded-full text-sm font-semibold ${savingPlan.status === 'Active'
+                  ? 'bg-green-100 text-green-700'
+                  : savingPlan.status === 'Completed'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-gray-100 text-gray-700'
+                }`}>
                 {savingPlan.status}
-              </span>
+              </div>
 
               {savingPlan.isStaking && (
-                <span className="bg-green-500/20 border border-green-500/30 text-green-400 text-sm px-3 py-1 rounded-full">
+                <div className="bg-purple-100 text-purple-700 text-sm px-4 py-2 rounded-full">
                   Auto-Staking Active
-                </span>
+                </div>
               )}
 
-              {/* Withdrawal Eligibility Badge */}
-              <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${isEligibleForNormalWithdraw
-                  ? "bg-green-500/20 border border-green-500/30 text-green-400"
-                  : "bg-orange-500/20 border border-orange-500/30 text-orange-400"
-                  }`}
-              >
+              <div className={`px-4 py-2 rounded-full text-sm font-semibold ${isEligibleForNormalWithdraw
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-orange-100 text-orange-700'
+                }`}>
                 {isEligibleForNormalWithdraw ? "Withdrawal Available" : "Early Withdrawal Only"}
-              </span>
+              </div>
             </div>
 
             {/* ICP Rate Display */}
             <div className="mt-4 flex items-center justify-center space-x-2">
               {priceData.error ? (
-                <div className="flex items-center space-x-2 text-red-400">
+                <div className="flex items-center space-x-2 text-red-500">
                   <AlertCircle size={14} />
                   <span className="text-sm">Price unavailable</span>
                 </div>
               ) : (
                 <>
-                  <span className="text-white/40 text-sm">
+                  <span className="text-gray-600 text-sm">
                     1 ICP = ${priceData.price.toFixed(2)} USD
                   </span>
                   <div
                     className={`flex items-center space-x-1 text-xs ${priceData.changePercent24h >= 0
-                      ? "text-green-400"
-                      : "text-red-400"
+                      ? "text-green-600"
+                      : "text-red-600"
                       }`}
                   >
                     {priceData.changePercent24h >= 0 ? (
@@ -739,380 +757,311 @@ function SavingsPlanDetailsContent() {
                       {Math.abs(priceData.changePercent24h).toFixed(2)}%
                     </span>
                   </div>
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 </>
               )}
             </div>
           </motion.div>
 
-          {/* Dashboard Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="mb-12"
-          >
-            <div className="relative">
-              <div className="absolute inset-0 bg-white/10 rounded-2xl blur-xl opacity-50" />
-              <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-                <div className="grid md:grid-cols-4 gap-6 text-center">
-                  <div>
-                    <Target size={24} className="text-white/60 mx-auto mb-2" />
-                    <p className="text-white/60 text-sm mb-1">Target</p>
-                    <p className="text-white text-xl font-semibold">
-                      {savingPlan.target}
-                    </p>
-                  </div>
-                  <div>
-                    <DollarSign
-                      size={24}
-                      className="text-white/60 mx-auto mb-2"
-                    />
-                    <p className="text-white/60 text-sm mb-1">Goal Amount</p>
-                    <p className="text-white text-xl font-semibold">
-                      {formatICP(savingPlan.totalAmount)} ICP
-                    </p>
-                    <p className="text-white/50 text-sm">
-                      ≈ ${formatUSD(savingPlan.totalAmount)} USD
-                    </p>
-                  </div>
-                  <div>
-                    <Calendar
-                      size={24}
-                      className="text-white/60 mx-auto mb-2"
-                    />
-                    <p className="text-white/60 text-sm mb-1">Target Date</p>
-                    <p className="text-white text-xl font-semibold">
-                      {savingPlan.targetDate}
-                    </p>
-                  </div>
-                  <div>
-                    <TrendingUp
-                      size={24}
-                      className="text-white/60 mx-auto mb-2"
-                    />
-                    <p className="text-white/60 text-sm mb-1">
-                      Monthly Savings
-                    </p>
-                    <p className="text-white text-xl font-semibold">
-                      {formatICP(savingPlan.monthlyTarget)} ICP
-                    </p>
-                    <p className="text-white/50 text-sm">
-                      ≈ ${formatUSD(savingPlan.monthlyTarget)} USD
-                    </p>
+          {/* Main Content Grid */}
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Left Column - Progress and Overview */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="lg:col-span-2 space-y-6"
+            >
+              {/* Progress Card */}
+              <div className="bg-white/80 backdrop-blur-xl border border-gray-200/30 rounded-3xl p-8 shadow-lg shadow-purple-500/5">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                    <TrendingUp className="w-6 h-6 text-purple-600 mr-3" />
+                    Progress Overview
+                  </h2>
+                  <div className={`px-4 py-2 rounded-full text-sm font-semibold ${savingPlan.status === 'Active'
+                      ? 'bg-green-100 text-green-700'
+                      : savingPlan.status === 'Completed'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
+                    {savingPlan.status}
                   </div>
                 </div>
-              </div>
-            </div>
-          </motion.div>
 
-          {/* Progress Tracker */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="mb-12"
-          >
-            <h2 className="text-2xl font-bold text-white mb-8 text-center">
-              Progress Tracker
-            </h2>
-            <div className="relative group">
-              <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-50" />
-              <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
                 {/* Progress Bar */}
-                <div className="mb-8">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-white/60 text-sm">
-                      {formatICP(savingPlan.currentSaved)} ICP
-                    </span>
-                    <span className="text-white font-medium">
-                      {progressPercentage}%
-                    </span>
-                    <span className="text-white/60 text-sm">
-                      {formatICP(savingPlan.totalAmount)} ICP
-                    </span>
+                <div className="mb-6">
+                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Progress</span>
+                    <span>{progressPercentage.toFixed(1)}%</span>
                   </div>
-                  <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+                  <div className="w-full bg-gray-200/50 rounded-full h-4 overflow-hidden">
                     <motion.div
-                      initial={{ width: "0%" }}
+                      initial={{ width: 0 }}
                       animate={{ width: `${progressPercentage}%` }}
-                      transition={{ duration: 1.5, ease: "easeOut" }}
-                      className="h-full bg-white rounded-full"
+                      transition={{ duration: 1.5, delay: 0.5 }}
+                      className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
                     />
                   </div>
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <p className="text-white/60 text-xs mb-1">
-                      Current Savings
-                    </p>
-                    <p className="text-white text-2xl font-bold">
-                      {formatICP(savingPlan.currentSaved)} ICP
-                    </p>
-                    <p className="text-white/50 text-xs mt-1">
-                      ≈ ${formatUSD(savingPlan.currentSaved)} USD
-                    </p>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Current Saved</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {formatICP(savingPlan.currentSaved)} ICP
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          ≈ ${formatUSD(savingPlan.currentSaved)}
+                        </p>
+                      </div>
+                      <DollarSign className="w-8 h-8 text-purple-600" />
+                    </div>
                   </div>
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <p className="text-white/60 text-xs mb-1">Remaining</p>
-                    <p className="text-white text-2xl font-bold">
-                      {formatICP(
-                        Math.max(
-                          0,
-                          savingPlan.totalAmount - savingPlan.currentSaved
-                        )
-                      )}{" "}
-                      ICP
-                    </p>
-                    <p className="text-white/50 text-xs mt-1">
-                      ≈ $
-                      {formatUSD(
-                        Math.max(
-                          0,
-                          savingPlan.totalAmount - savingPlan.currentSaved
-                        )
-                      )}{" "}
-                      USD
-                    </p>
+
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Target Amount</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {formatICP(savingPlan.totalAmount)} ICP
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          ≈ ${formatUSD(savingPlan.totalAmount)}
+                        </p>
+                      </div>
+                      <Target className="w-8 h-8 text-green-600" />
+                    </div>
                   </div>
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <p className="text-white/60 text-xs mb-1">Next Milestone</p>
-                    <p className="text-white text-lg font-medium">
-                      {savingPlan.nextMilestone}
-                    </p>
+
+                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Monthly Target</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {formatICP(savingPlan.monthlyTarget)} ICP
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          ≈ ${formatUSD(savingPlan.monthlyTarget)}
+                        </p>
+                      </div>
+                      <Calendar className="w-8 h-8 text-blue-600" />
+                    </div>
                   </div>
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <p className="text-white/60 text-xs mb-1">Time Remaining</p>
-                    <p className="text-white text-lg font-medium">
-                      {savingPlan.timelineMonths} months
-                    </p>
+
+                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Time Remaining</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                          {savingPlan.timelineMonths} months
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Target: {savingPlan.targetDate}
+                        </p>
+                      </div>
+                      <Calendar className="w-8 h-8 text-orange-600" />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
 
-          {/* Action Buttons Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="mb-12"
-          >
-            <h2 className="text-2xl font-bold text-white mb-8 text-center">
-              Manage Your Savings
-            </h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Top Up Section */}
-              <div className="relative group">
-                <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-50" />
-                <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
-                  <Plus size={32} className="text-green-400 mx-auto mb-4" />
-                  <h3 className="text-white text-xl font-semibold mb-2">
-                    Add to Savings
-                  </h3>
-                  <p className="text-white/70 mb-2">
-                    Contribute more to reach your goal faster
-                  </p>
-
-                  {/* Auto-staking info */}
-                  {savingPlan.isStaking && (
-                    <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                      <div className="flex items-center justify-center space-x-2">
-                        <Shield size={16} className="text-green-400" />
-                        <span className="text-green-400 text-sm font-medium">
-                          Deposits will be automatically staked
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  <ShimmerButton
-                    className="px-6 py-3 text-base font-medium w-full"
-                    onClick={handleTopUp}
-                    background="#16a34a"
-                    shimmerColor="#ffffff"
-                    shimmerSize="0.15em"
-                  >
-                    <div className="flex items-center justify-center space-x-2">
-                      <Plus size={18} className="text-white" />
-                      <span className="text-white">
-                        {savingPlan.isStaking ? "Add & Stake" : "Add Money"}
-                      </span>
-                    </div>
-                  </ShimmerButton>
-                </div>
-              </div>
-
-              {/* Withdraw Section */}
-              <div className="relative group">
-                <div className="absolute inset-0 bg-white/5 rounded-2xl blur-xl opacity-50" />
-                <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
-                  <Minus size={32} className="text-blue-400 mx-auto mb-4" />
-                  <h3 className="text-white text-xl font-semibold mb-2">
-                    Withdraw Funds
-                  </h3>
-                  <p className="text-white/70 mb-2">
-                    {isEligibleForNormalWithdraw
-                      ? "Withdraw without penalty"
-                      : "Early withdrawal available with penalty"
-                    }
-                  </p>
-
-                  {/* Withdrawal Info */}
-                  <div className="mb-6">
-                    {isEligibleForNormalWithdraw ? (
-                      <div className="flex items-center justify-center space-x-2 text-green-400 text-sm">
-                        <CheckCircle size={16} />
-                        <span>Normal withdrawal (2% admin fee)</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center space-x-2 text-orange-400 text-sm">
-                        <AlertTriangle size={16} />
-                        <span>Early withdrawal (5% admin fee)</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <ShimmerButton
-                    className="px-6 py-3 text-base font-medium w-full"
-                    onClick={handleWithdraw}
-                    background={isEligibleForNormalWithdraw ? "#3b82f6" : "#f97316"}
-                    shimmerColor="#ffffff"
-                    shimmerSize="0.15em"
-                  >
-                    <div className="flex items-center justify-center space-x-2">
-                      <Minus size={18} className="text-white" />
-                      <span className="text-white">
-                        {isEligibleForNormalWithdraw ? "Withdraw" : "Force Withdraw"}
-                      </span>
-                    </div>
-                  </ShimmerButton>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Motivation Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
-            className="mb-12"
-          >
-            <div className="relative group">
-              <div className="absolute inset-0 bg-white/10 rounded-2xl blur-xl opacity-50" />
-              <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
-                <Award size={32} className="text-white/80 mx-auto mb-4" />
-                <h3 className="text-white text-xl font-semibold mb-2">
-                  {progressPercentage >= 100
-                    ? "Congratulations!"
-                    : "Keep Going!"}
+              {/* Next Milestone */}
+              <div className="bg-white/80 backdrop-blur-xl border border-gray-200/30 rounded-3xl p-6 shadow-lg shadow-purple-500/5">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                  <Award className="w-5 h-5 text-yellow-600 mr-2" />
+                  Next Milestone
                 </h3>
-                <p className="text-white/70 max-w-2xl mx-auto">
-                  {progressPercentage >= 100
-                    ? `You've successfully reached your ${savingPlan.target} goal! 🎉`
-                    : `You're ${progressPercentage}% of the way to your ${savingPlan.target}. Every contribution brings you closer to your dream!`}
-                </p>
-                {savingPlan.isStaking && (
-                  <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                    <div className="flex items-center justify-center space-x-2">
-                      <TrendingUp size={16} className="text-green-400" />
-                      <span className="text-green-400 text-sm font-medium">
-                        Your savings are earning ICP staking rewards (8.5% APY)
-                      </span>
-                    </div>
-                  </div>
-                )}
+                <p className="text-lg text-gray-700">{savingPlan.nextMilestone}</p>
               </div>
-            </div>
-          </motion.div>
+
+              {/* Staking Status */}
+              {savingPlan.isStaking && (
+                <div className="bg-white/80 backdrop-blur-xl border border-gray-200/30 rounded-3xl p-6 shadow-lg shadow-purple-500/5">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                    <Shield className="w-5 h-5 text-green-600 mr-2" />
+                    Staking Active
+                  </h3>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <p className="text-lg text-gray-700">Your ICP is earning staking rewards</p>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Right Column - Actions */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="space-y-6"
+            >
+              {/* Quick Actions */}
+              <div className="bg-white/80 backdrop-blur-xl border border-gray-200/30 rounded-3xl p-6 shadow-lg shadow-purple-500/5">
+                <h3 className="text-xl font-bold text-gray-900 mb-6">Quick Actions</h3>
+
+                <div className="space-y-4">
+                  <ShimmerButton
+                    onClick={handleTopUp}
+                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Top Up Savings
+                  </ShimmerButton>
+
+                  <button
+                    onClick={handleWithdraw}
+                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center"
+                  >
+                    <Minus className="w-5 h-5 mr-2" />
+                    Withdraw Funds
+                  </button>
+
+                  {!savingPlan.isStaking && (
+                    <button
+                      onClick={() => alert("Staking functionality coming soon!")}
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center"
+                    >
+                      <Shield className="w-5 h-5 mr-2" />
+                      Start Staking
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Plan Details */}
+              <div className="bg-white/80 backdrop-blur-xl border border-gray-200/30 rounded-3xl p-6 shadow-lg shadow-purple-500/5">
+                <h3 className="text-xl font-bold text-gray-900 mb-6">Plan Details</h3>
+
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Plan ID</span>
+                    <span className="font-semibold">#{savingPlan.id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Start Date</span>
+                    <span className="font-semibold">{savingPlan.startDate}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Priority Level</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${savingPlan.priorityLevel === 1
+                        ? 'bg-red-100 text-red-700'
+                        : savingPlan.priorityLevel === 2
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-green-100 text-green-700'
+                      }`}>
+                      {savingPlan.priorityLevel === 1 ? 'High' : savingPlan.priorityLevel === 2 ? 'Medium' : 'Low'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Staking</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${savingPlan.isStaking ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                      }`}>
+                      {savingPlan.isStaking ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Withdrawal Eligibility */}
+              <div className={`backdrop-blur-xl border rounded-3xl p-6 shadow-lg ${isEligibleForNormalWithdraw
+                  ? 'bg-green-50/80 border-green-200/30'
+                  : 'bg-orange-50/80 border-orange-200/30'
+                }`}>
+                <div className="flex items-center mb-3">
+                  {isEligibleForNormalWithdraw ? (
+                    <CheckCircle className="w-6 h-6 text-green-600 mr-2" />
+                  ) : (
+                    <AlertTriangle className="w-6 h-6 text-orange-600 mr-2" />
+                  )}
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Withdrawal Status
+                  </h3>
+                </div>
+                <p className={`text-sm ${isEligibleForNormalWithdraw ? 'text-green-700' : 'text-orange-700'
+                  }`}>
+                  {isEligibleForNormalWithdraw
+                    ? 'You can withdraw with standard 2% fee'
+                    : 'Early withdrawal incurs 5% penalty fee'
+                  }
+                </p>
+              </div>
+            </motion.div>
+          </div>
+
         </div>
       </div>
 
-      {/* Top Up Modal */}
+      {/* Modals remain the same - Top Up Modal */}
       <AnimatePresence>
         {showTopUpModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl p-8 w-full max-w-md"
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl"
             >
-              <button
-                onClick={handleCancel}
-                className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors duration-300"
-              >
-                <X size={20} />
-              </button>
-
-              <h3 className="text-white text-2xl font-bold mb-6 text-center">
-                {savingPlan.isStaking ? "Add & Stake Funds" : "Add to Savings"}
-              </h3>
-
-              {/* Staking info banner */}
-              {savingPlan.isStaking && (
-                <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
-                  <div className="flex items-start space-x-3">
-                    <Shield size={20} className="text-green-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="text-green-400 font-medium text-sm mb-1">Auto-Staking Enabled</h4>
-                      <p className="text-green-200 text-xs">
-                        Your deposit will be automatically staked to earn 8.5% APY rewards after the transfer completes.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="mb-6">
-                <label className="block text-white/80 text-sm font-medium mb-3">
-                  Amount to Transfer (ICP)
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={topUpAmount}
-                    onChange={(e) => setTopUpAmount(e.target.value)}
-                    placeholder="8.04"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all duration-300"
-                  />
-                </div>
-                {topUpAmount && (
-                  <p className="text-white/40 text-sm mt-2">
-                    ≈ ${formatUSD(Number(topUpAmount))} USD
-                  </p>
-                )}
-                {topUpErrors && (
-                  <p className="text-red-400 text-sm mt-2">{topUpErrors}</p>
-                )}
-              </div>
-
-              <div className="flex space-x-4">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Top Up Savings</h3>
                 <button
                   onClick={handleCancel}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 text-white/80 hover:bg-white/10 transition-all duration-300"
+                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
                 >
-                  Cancel
+                  <X className="w-5 h-5" />
                 </button>
-                <ShimmerButton
-                  className="flex-1 py-3"
-                  onClick={handleConfirmTopUp}
-                  background="#1f2937"
-                  shimmerColor="#ffffff"
-                  shimmerSize="0.05em"
-                >
-                  <span className="text-white">Continue</span>
-                </ShimmerButton>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Amount (ICP)
+                  </label>
+                  <input
+                    type="number"
+                    value={topUpAmount}
+                    onChange={(e) => setTopUpAmount(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Enter amount in ICP"
+                    step="0.0001"
+                    min="0"
+                  />
+                  {topUpErrors && (
+                    <p className="text-red-500 text-sm mt-1">{topUpErrors}</p>
+                  )}
+                </div>
+
+                {topUpAmount && !isNaN(Number(topUpAmount)) && Number(topUpAmount) > 0 && (
+                  <div className="bg-purple-50 rounded-xl p-4">
+                    <p className="text-sm text-gray-600">
+                      Equivalent: ≈ ${formatUSD(Number(topUpAmount))}
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    onClick={handleCancel}
+                    className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <ShimmerButton
+                    onClick={handleConfirmTopUp}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white"
+                  >
+                    Continue
+                  </ShimmerButton>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -1126,33 +1075,34 @@ function SavingsPlanDetailsContent() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl p-8 w-full max-w-md"
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl"
             >
-              <button
-                onClick={handleWithdrawCancel}
-                className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors duration-300"
-              >
-                <X size={20} />
-              </button>
-
-              <h3 className="text-white text-2xl font-bold mb-2 text-center">
-                {isForceWithdraw ? "Force Withdraw" : "Withdraw Funds"}
-              </h3>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {isForceWithdraw ? "Force Withdraw" : "Withdraw Funds"}
+                </h3>
+                <button
+                  onClick={handleWithdrawCancel}
+                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
               {/* Warning for force withdrawal */}
               {isForceWithdraw && (
-                <div className="mb-6 p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl">
+                <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl">
                   <div className="flex items-start space-x-3">
-                    <AlertTriangle size={20} className="text-orange-400 flex-shrink-0 mt-0.5" />
+                    <AlertTriangle size={20} className="text-orange-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="text-orange-400 font-medium text-sm mb-1">Early Withdrawal Penalty</h4>
-                      <p className="text-orange-200 text-xs">
+                      <h4 className="text-orange-800 font-medium text-sm mb-1">Early Withdrawal Penalty</h4>
+                      <p className="text-orange-700 text-xs">
                         Withdrawing before {savingPlan?.targetDate} incurs a 5% admin fee instead of the normal 2% fee.
                       </p>
                     </div>
@@ -1160,11 +1110,11 @@ function SavingsPlanDetailsContent() {
                 </div>
               )}
 
-              <div className="mb-6">
-                <label className="block text-white/80 text-sm font-medium mb-3">
-                  Amount to Withdraw (ICP)
-                </label>
-                <div className="relative">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Amount to Withdraw (ICP)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -1172,27 +1122,30 @@ function SavingsPlanDetailsContent() {
                     value={withdrawAmount}
                     onChange={(e) => setWithdrawAmount(e.target.value)}
                     placeholder={`Max: ${formatICP(savingPlan?.currentSaved || 0)}`}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all duration-300"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
+                  {withdrawErrors && (
+                    <p className="text-red-500 text-sm mt-1">{withdrawErrors}</p>
+                  )}
                 </div>
 
                 {/* Amount calculations */}
                 {withdrawAmount && Number(withdrawAmount) > 0 && (
-                  <div className="mt-3 p-3 bg-white/5 rounded-lg space-y-2 text-sm">
-                    <div className="flex justify-between text-white/70">
+                  <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+                    <div className="flex justify-between text-gray-600">
                       <span>Withdrawal Amount:</span>
-                      <span>{withdrawAmount} ICP</span>
+                      <span className="text-gray-900">{withdrawAmount} ICP</span>
                     </div>
-                    <div className="flex justify-between text-white/70">
+                    <div className="flex justify-between text-gray-600">
                       <span>Admin Fee ({isForceWithdraw ? '5%' : '2%'}):</span>
-                      <span>-{formatICP(calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP</span>
+                      <span className="text-red-600">-{formatICP(calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP</span>
                     </div>
-                    <div className="border-t border-white/10 pt-2">
-                      <div className="flex justify-between text-white font-medium">
-                        <span>You&apos;ll Receive:</span>
-                        <span>{formatICP(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP</span>
+                    <div className="border-t border-gray-200 pt-2">
+                      <div className="flex justify-between font-medium">
+                        <span className="text-gray-900">You&apos;ll Receive:</span>
+                        <span className="text-green-600">{formatICP(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP</span>
                       </div>
-                      <div className="flex justify-between text-white/50 text-xs">
+                      <div className="flex justify-between text-gray-500 text-xs">
                         <span>≈ USD:</span>
                         <span>${formatUSD(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))}</span>
                       </div>
@@ -1200,54 +1153,45 @@ function SavingsPlanDetailsContent() {
                   </div>
                 )}
 
-                {withdrawErrors && (
-                  <p className="text-red-400 text-sm mt-2">{withdrawErrors}</p>
-                )}
-              </div>
-
-              {/* Quick amount buttons */}
-              <div className="mb-6">
-                <p className="text-white/60 text-sm mb-3">Quick amounts:</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => setWithdrawAmount((savingPlan?.currentSaved * 0.25 || 0).toFixed(8))}
-                    className="bg-white/5 border border-white/10 rounded-lg py-2 text-white/80 text-sm hover:bg-white/10 transition-all duration-300"
-                  >
-                    25%
-                  </button>
-                  <button
-                    onClick={() => setWithdrawAmount((savingPlan?.currentSaved * 0.5 || 0).toFixed(8))}
-                    className="bg-white/5 border border-white/10 rounded-lg py-2 text-white/80 text-sm hover:bg-white/10 transition-all duration-300"
-                  >
-                    50%
-                  </button>
-                  <button
-                    onClick={() => setWithdrawAmount((savingPlan?.currentSaved || 0).toFixed(8))}
-                    className="bg-white/5 border border-white/10 rounded-lg py-2 text-white/80 text-sm hover:bg-white/10 transition-all duration-300"
-                  >
-                    Max
-                  </button>
+                {/* Quick amount buttons */}
+                <div>
+                  <p className="text-gray-600 text-sm mb-3">Quick amounts:</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => setWithdrawAmount((savingPlan?.currentSaved * 0.25 || 0).toFixed(8))}
+                      className="bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg py-2 text-gray-700 text-sm transition-all duration-300"
+                    >
+                      25%
+                    </button>
+                    <button
+                      onClick={() => setWithdrawAmount((savingPlan?.currentSaved * 0.5 || 0).toFixed(8))}
+                      className="bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg py-2 text-gray-700 text-sm transition-all duration-300"
+                    >
+                      50%
+                    </button>
+                    <button
+                      onClick={() => setWithdrawAmount((savingPlan?.currentSaved || 0).toFixed(8))}
+                      className="bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg py-2 text-gray-700 text-sm transition-all duration-300"
+                    >
+                      Max
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex space-x-4">
-                <button
-                  onClick={handleWithdrawCancel}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 text-white/80 hover:bg-white/10 transition-all duration-300"
-                >
-                  Cancel
-                </button>
-                <ShimmerButton
-                  className="flex-1 py-3"
-                  onClick={handleConfirmWithdraw}
-                  background={isForceWithdraw ? "rgba(249, 115, 22, 0.3)" : "rgba(59, 130, 246, 0.3)"}
-                  shimmerColor="#ffffff"
-                  shimmerSize="0.1em"
-                >
-                  <span className="text-white">
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    onClick={handleWithdrawCancel}
+                    className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <ShimmerButton
+                    onClick={handleConfirmWithdraw}
+                    className={`flex-1 ${isForceWithdraw ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-blue-500 to-purple-500'} text-white`}
+                  >
                     {isForceWithdraw ? "Force Withdraw" : "Withdraw"}
-                  </span>
-                </ShimmerButton>
+                  </ShimmerButton>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -1264,39 +1208,39 @@ function SavingsPlanDetailsContent() {
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl p-8 w-full max-w-md"
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl"
             >
               <div className="text-center mb-6">
                 {isProcessingTopUp ? (
                   <div className="mb-4">
                     <Loader
                       size={48}
-                      className="text-white mx-auto mb-4 animate-spin"
+                      className="text-purple-600 mx-auto mb-4 animate-spin"
                     />
                     {isStaking && (
-                      <Shield size={24} className="text-green-400 mx-auto mb-2" />
+                      <Shield size={24} className="text-green-500 mx-auto mb-2" />
                     )}
                   </div>
                 ) : (
-                  <CheckCircle size={48} className="text-white mx-auto mb-4" />
+                  <CheckCircle size={48} className="text-purple-600 mx-auto mb-4" />
                 )}
 
-                <h3 className="text-white text-2xl font-bold mb-2">
+                <h3 className="text-gray-900 text-2xl font-bold mb-2">
                   {isProcessingTopUp
                     ? (isStaking ? "Processing & Staking..." : "Processing Transfer...")
                     : (savingPlan.isStaking ? "Confirm Transfer & Staking" : "Confirm Transfer")}
                 </h3>
 
-                <div className="text-white/70">
+                <div className="text-gray-600">
                   {isProcessingTopUp ? (
                     <div className="space-y-2">
                       <p>{stakingProgress}</p>
                       {isStaking && (
-                        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                          <p className="text-green-400 text-sm">
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <p className="text-green-700 text-sm">
                             🔄 Auto-staking in progress...
                           </p>
                         </div>
@@ -1306,20 +1250,20 @@ function SavingsPlanDetailsContent() {
                     <div className="space-y-3">
                       <p>
                         Transfer{" "}
-                        <span className="text-white font-semibold">
+                        <span className="text-gray-900 font-semibold">
                           {topUpAmount} ICP
                         </span>{" "}
                         to your savings plan
                       </p>
-                      <p className="text-white/50 text-sm">
+                      <p className="text-gray-500 text-sm">
                         ≈ ${formatUSD(Number(topUpAmount))} USD
                       </p>
 
                       {savingPlan.isStaking && (
-                        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                           <div className="flex items-center justify-center space-x-2">
-                            <Shield size={16} className="text-green-400" />
-                            <span className="text-green-400 text-sm">
+                            <Shield size={16} className="text-green-600" />
+                            <span className="text-green-700 text-sm">
                               Funds will be automatically staked after transfer
                             </span>
                           </div>
@@ -1331,23 +1275,18 @@ function SavingsPlanDetailsContent() {
               </div>
 
               {!isProcessingTopUp && (
-                <div className="flex space-x-4">
+                <div className="flex space-x-3 pt-4">
                   <button
                     onClick={handleCancel}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 text-white/80 hover:bg-white/10 transition-all duration-300"
+                    className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
                   >
                     Cancel
                   </button>
                   <ShimmerButton
-                    className="flex-1 py-3"
                     onClick={handleFinalConfirm}
-                    background="rgba(255, 255, 255, 0.1)"
-                    shimmerColor="#ffffff"
-                    shimmerSize="0.1em"
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white"
                   >
-                    <span className="text-white">
-                      {savingPlan.isStaking ? "Transfer & Stake" : "Confirm"}
-                    </span>
+                    {savingPlan.isStaking ? "Transfer & Stake" : "Confirm"}
                   </ShimmerButton>
                 </div>
               )}
@@ -1366,32 +1305,32 @@ function SavingsPlanDetailsContent() {
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl p-8 w-full max-w-md"
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl"
             >
               <div className="text-center mb-6">
                 {isProcessingWithdraw ? (
                   <div className="mb-4">
                     <Loader
                       size={48}
-                      className="text-white mx-auto mb-4 animate-spin"
+                      className="text-purple-600 mx-auto mb-4 animate-spin"
                     />
                     {isUnstaking && (
-                      <Shield size={24} className="text-orange-400 mx-auto mb-2" />
+                      <Shield size={24} className="text-orange-500 mx-auto mb-2" />
                     )}
                   </div>
                 ) : (
                   <div className="mb-4">
                     {isForceWithdraw ? (
-                      <AlertTriangle size={48} className="text-orange-400 mx-auto" />
+                      <AlertTriangle size={48} className="text-orange-500 mx-auto" />
                     ) : (
-                      <CheckCircle size={48} className="text-blue-400 mx-auto" />
+                      <CheckCircle size={48} className="text-blue-500 mx-auto" />
                     )}
                   </div>
                 )}
-                <h3 className="text-white text-2xl font-bold mb-2">
+                <h3 className="text-gray-900 text-2xl font-bold mb-2">
                   {isProcessingWithdraw
                     ? (isUnstaking ? "Processing Unstaking & Withdrawal..." : "Processing Withdrawal...")
                     : "Confirm Withdrawal"}
@@ -1399,10 +1338,10 @@ function SavingsPlanDetailsContent() {
 
                 {isProcessingWithdraw && (
                   <div className="space-y-2">
-                    <p className="text-white/70">{unstakingProgress}</p>
+                    <p className="text-gray-600">{unstakingProgress}</p>
                     {isUnstaking && savingPlan.isStaking && (
-                      <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-                        <p className="text-orange-400 text-sm">
+                      <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <p className="text-orange-700 text-sm">
                           🔄 Auto-unstaking in progress...
                         </p>
                       </div>
@@ -1414,12 +1353,12 @@ function SavingsPlanDetailsContent() {
                   <div className="space-y-3">
                     {/* Unstaking warning for staked savings */}
                     {savingPlan.isStaking && (
-                      <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl">
+                      <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
                         <div className="flex items-start space-x-3">
-                          <Shield size={20} className="text-orange-400 flex-shrink-0 mt-0.5" />
+                          <Shield size={20} className="text-orange-600 flex-shrink-0 mt-0.5" />
                           <div>
-                            <h4 className="text-orange-400 font-medium text-sm mb-1">Auto-Unstaking Required</h4>
-                            <p className="text-orange-200 text-xs">
+                            <h4 className="text-orange-800 font-medium text-sm mb-1">Auto-Unstaking Required</h4>
+                            <p className="text-orange-700 text-xs">
                               Your staked funds will be automatically unstaked before withdrawal. This may take some time to process.
                             </p>
                           </div>
@@ -1427,23 +1366,23 @@ function SavingsPlanDetailsContent() {
                       </div>
                     )}
 
-                    <div className="p-4 bg-white/5 rounded-xl text-left space-y-2">
-                      <div className="flex justify-between text-white/70 text-sm">
+                    <div className="p-4 bg-gray-50 rounded-xl text-left space-y-2">
+                      <div className="flex justify-between text-gray-600 text-sm">
                         <span>Withdrawal Amount:</span>
-                        <span className="text-white">{withdrawAmount} ICP</span>
+                        <span className="text-gray-900">{withdrawAmount} ICP</span>
                       </div>
-                      <div className="flex justify-between text-white/70 text-sm">
+                      <div className="flex justify-between text-gray-600 text-sm">
                         <span>Admin Fee ({isForceWithdraw ? '5%' : '2%'}):</span>
-                        <span className="text-red-400">-{formatICP(calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP</span>
+                        <span className="text-red-600">-{formatICP(calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP</span>
                       </div>
-                      <div className="border-t border-white/10 pt-2">
-                        <div className="flex justify-between text-white font-medium">
-                          <span>You&apos;ll Receive:</span>
-                          <span className="text-green-400">
+                      <div className="border-t border-gray-200 pt-2">
+                        <div className="flex justify-between font-medium">
+                          <span className="text-gray-900">You&apos;ll Receive:</span>
+                          <span className="text-green-600">
                             {formatICP(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP
                           </span>
                         </div>
-                        <div className="flex justify-between text-white/50 text-xs">
+                        <div className="flex justify-between text-gray-500 text-xs">
                           <span>≈ USD:</span>
                           <span>${formatUSD(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))}</span>
                         </div>
@@ -1460,23 +1399,18 @@ function SavingsPlanDetailsContent() {
               </div>
 
               {!isProcessingWithdraw && (
-                <div className="flex space-x-4">
+                <div className="flex space-x-3 pt-4">
                   <button
                     onClick={handleWithdrawCancel}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 text-white/80 hover:bg-white/10 transition-all duration-300"
+                    className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
                   >
                     Cancel
                   </button>
                   <ShimmerButton
-                    className="flex-1 py-3"
                     onClick={handleFinalWithdrawConfirm}
-                    background={isForceWithdraw ? "rgba(249, 115, 22, 0.3)" : "rgba(59, 130, 246, 0.3)"}
-                    shimmerColor="#ffffff"
-                    shimmerSize="0.1em"
+                    className={`flex-1 ${isForceWithdraw ? 'bg-gradient-to-r from-orange-500 to-red-500' : 'bg-gradient-to-r from-blue-500 to-purple-500'} text-white`}
                   >
-                    <span className="text-white">
-                      {isForceWithdraw ? "Confirm Force Withdrawal" : "Confirm Withdrawal"}
-                    </span>
+                    {isForceWithdraw ? "Confirm Force Withdrawal" : "Confirm Withdrawal"}
                   </ShimmerButton>
                 </div>
               )}
@@ -1485,8 +1419,8 @@ function SavingsPlanDetailsContent() {
         )}
       </AnimatePresence>
 
-      {/* Bottom Fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+      {/* Colorful Bottom Gradient */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-purple-100/40 via-blue-50/20 to-transparent" />
     </div>
   );
 }
