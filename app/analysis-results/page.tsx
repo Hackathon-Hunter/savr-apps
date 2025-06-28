@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Brain,
@@ -39,11 +39,11 @@ export default function AnalysisResults() {
   const [createSuccess, setCreateSuccess] = useState(false);
 
   // Redirect if no analysis data
-  useEffect(() => {
-    if (!analysisData || !userInput) {
-      router.push("/input-target");
-    }
-  }, [analysisData, userInput, router]);
+  // useEffect(() => {
+  //   if (!analysisData || !userInput) {
+  //     router.push("/input-target");
+  //   }
+  // }, [analysisData, userInput, router]);
 
   // Show loading if no data yet
   if (!analysisData || !userInput) {

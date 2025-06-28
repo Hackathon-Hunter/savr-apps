@@ -4,7 +4,7 @@ import { Actor, ActorSubclass, HttpAgent } from "@dfinity/agent";
 import { _SERVICE, idlFactory } from "@/service/backend.did";
 
 const identityProvider = "https://identity.ic0.app";
-const canisterId = "3ykjv-vqaaa-aaaaj-a2beq-cai";
+const canisterId = "iohvt-tqaaa-aaaam-ael7q-cai";
 
 type AuthState = {
   actor: ActorSubclass<_SERVICE> | undefined;
