@@ -1189,7 +1189,7 @@ function SavingsPlanDetailsContent() {
                     </div>
                     <div className="border-t border-white/10 pt-2">
                       <div className="flex justify-between text-white font-medium">
-                        <span>You'll Receive:</span>
+                        <span>You&apos;ll Receive:</span>
                         <span>{formatICP(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP</span>
                       </div>
                       <div className="flex justify-between text-white/50 text-xs">
@@ -1438,7 +1438,7 @@ function SavingsPlanDetailsContent() {
                       </div>
                       <div className="border-t border-white/10 pt-2">
                         <div className="flex justify-between text-white font-medium">
-                          <span>You'll Receive:</span>
+                          <span>You&apos;ll Receive:</span>
                           <span className="text-green-400">
                             {formatICP(Number(withdrawAmount) - calculateAdminFee(Number(withdrawAmount), isForceWithdraw))} ICP
                           </span>

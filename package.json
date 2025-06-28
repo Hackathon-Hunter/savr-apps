@@ -6,7 +6,11 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "export": "next export",
+    "build:ic": "npm run build && npm run export",
+    "deploy:local": "dfx deploy --network local",
+    "deploy:ic": "dfx deploy --network ic"
   },
   "dependencies": {
     "@dfinity/agent": "^2.4.1",

@@ -858,7 +858,7 @@ export default function Dashboard() {
                       <AlertCircle size={32} className="text-white" />
                     </div>
                   </div>
-                  <h3 className="text-gray-800 text-xl font-bold mb-2 bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
+                  <h3 className="text-gray-800 text-xl font-bold mb-2 bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text">
                     Error Loading Savings
                   </h3>
                   <p className="text-gray-600 text-sm mb-6 max-w-md mx-auto leading-relaxed">{savingsError}</p>
@@ -964,7 +964,7 @@ export default function Dashboard() {
                           <ShimmerButton
                             className="px-6 py-3 text-sm font-semibold"
                             onClick={() =>
-                              router.push(`/customize-plan/${plan.id}`)
+                              router.push(`/customize-plan?id=${plan.id}`)
                             }
                             background="linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)"
                             shimmerColor="#ffffff"

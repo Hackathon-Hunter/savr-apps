@@ -476,13 +476,13 @@ export default function Home() {
                 <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
                   Tell Us Your Dreams,
                   <span className="block text-blue-600">
-                    We'll Make Them Real
+                    We&apos;ll Make Them Real
                   </span>
                 </h3>
 
                 <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-                  Whether it's a vacation, new car, or emergency fund - simply
-                  tell us what you're saving for and your monthly income. Our AI
+                  Whether it&apos;s a vacation, new car, or emergency fund - simply
+                  tell us what you&apos;re saving for and your monthly income. Our AI
                   will handle the rest.
                 </p>
 
@@ -693,7 +693,7 @@ export default function Home() {
             </h3>
             <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
               Join thousands of smart savers who are already building wealth
-              with SAVR's AI-powered platform.
+              with SAVR&apos;s AI-powered platform.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button

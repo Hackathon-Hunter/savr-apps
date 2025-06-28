@@ -231,17 +231,3 @@ export default function Navbar() {
     </nav>
   );
 }
-
-// Add these keyframes to your global CSS file if not already present
-const styles = `
-@keyframes slideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-`;
