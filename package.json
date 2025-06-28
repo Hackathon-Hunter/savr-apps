@@ -9,6 +9,7 @@
     "lint": "next lint",
     "build:ic": "npm run build",
     "deploy": "./scripts/deploy.sh",
+    "setup": "./scripts/setup-env.sh",
     "deploy:local": "dfx deploy --network local",
     "deploy:ic": "dfx deploy --network ic"
   },
