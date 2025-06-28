@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import Particles from "@/components/reactbits/Particles/Particles";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { useSavingsAnalysis } from "@/contexts/SavingsAnalysisContext";
+import { analyzeSavingsGoal, getSuggestions } from "@/lib/openai-client";
 
 export default function InputTarget() {
   const router = useRouter();
@@ -27,40 +28,19 @@ export default function InputTarget() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
   const [showLoader, setShowLoader] = useState(false);
 
-  // Load initial AI suggestions on page load
+  // Load initial suggestions (using fallback to avoid unnecessary API calls)
   useEffect(() => {
-    const fetchInitialSuggestions = async () => {
-      setLoadingSuggestions(true);
-      try {
-        const response = await fetch("/api/get-suggestions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ monthlyIncome: 5000 }), // Use average income for initial suggestions
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setAiSuggestions(data.suggestions || []);
-        }
-      } catch (error) {
-        console.error("Error fetching initial suggestions:", error);
-        // Fallback to default suggestions
-        setAiSuggestions([
-          "Emergency fund (6 months)",
-          "New car purchase",
-          "Dream vacation",
-          "House down payment",
-          "Investment account",
-          "Education fund",
-        ]);
-      } finally {
-        setLoadingSuggestions(false);
-      }
-    };
-
-    fetchInitialSuggestions();
+    setLoadingSuggestions(true);
+    // Start with fallback suggestions to avoid initial API call
+    setAiSuggestions([
+      "Emergency fund (6 months)",
+      "New car purchase", 
+      "Dream vacation",
+      "House down payment",
+      "Investment account",
+      "Education fund",
+    ]);
+    setLoadingSuggestions(false);
   }, []);
 
   const validateForm = () => {
@@ -99,24 +79,8 @@ export default function InputTarget() {
         monthlyIncome: monthlyIncomeUsd,
       });
 
-      // Get AI analysis from ChatGPT via API
-      const response = await fetch("/api/analyze-savings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          target,
-          monthlyIncome: monthlyIncomeUsd,
-          icpToUsdRate,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to analyze savings goal");
-      }
-
-      const analysis = await response.json();
+      // Get AI analysis from ChatGPT via client-side OpenAI
+      const analysis = await analyzeSavingsGoal(target, monthlyIncomeUsd, icpToUsdRate);
       setAnalysisData(analysis);
 
       // Keep the loader visible for a moment before navigating
@@ -151,18 +115,8 @@ export default function InputTarget() {
 
     setLoadingSuggestions(true);
     try {
-      const response = await fetch("/api/get-suggestions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ monthlyIncome: income }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAiSuggestions(data.suggestions || []);
-      }
+      const suggestions = await getSuggestions(income);
+      setAiSuggestions(suggestions);
     } catch (error) {
       console.error("Error fetching suggestions:", error);
       // Fallback to default suggestions
@@ -186,7 +140,11 @@ export default function InputTarget() {
   };
 
   const handleOnBlurIncome = () => {
-    fetchAISuggestions(Number(monthlyIncome));
+    const income = Number(monthlyIncome);
+    // Only fetch AI suggestions if income is substantial and different from default
+    if (income > 0 && income !== 5000) {
+      fetchAISuggestions(income);
+    }
   };
 
   return (

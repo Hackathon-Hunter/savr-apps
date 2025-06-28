@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { SavingsAnalysis } from '@/lib/analysis';
+import { SavingsAnalysis } from '@/lib/openai-client';
 
 interface SavingsAnalysisContextType {
   analysisData: SavingsAnalysis | null;
