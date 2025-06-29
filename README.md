@@ -1,208 +1,252 @@
-# SAVR - AI-Powered Savings on ICP
+# SAVR - AI-Powered Savings Platform on ICP
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app) that has been optimized for **Static Site Generation (SSG)** to be compatible with Internet Computer Protocol (ICP) deployment.
+**Smart savings plans with AI analysis and ICP staking rewards**
 
-## 🚀 Features
+SAVR is a decentralized savings application built on the Internet Computer Protocol (ICP) that combines AI-powered financial insights with secure blockchain technology to help users achieve their savings goals while earning staking rewards.
 
-- **AI-Powered Savings Analysis** - Smart algorithms analyze spending patterns and create personalized savings strategies
-- **ICP Staking Rewards** - Earn additional rewards while saving for your goals
-- **Internet Identity Authentication** - Secure, passwordless authentication with blockchain technology
-- **Static Site Generation** - Optimized for ICP deployment with full client-side functionality
-- **Local Storage Persistence** - Savings analysis data persists across browser sessions
+## 🌟 Features
 
-## 🏗️ Architecture
+### Core Savings Functionality
+- **Create Savings Goals**: Set personalized savings targets with custom deadlines and amounts
+- **AI-Powered Insights**: Get intelligent recommendations and analysis for your savings journey
+- **Progress Tracking**: Monitor your savings progress with detailed analytics and milestones
+- **Flexible Contributions**: Top up your savings at any time with automatic tracking
 
-This application has been converted from Server-Side Rendering (SSR) to Static Site Generation (SSG) to ensure compatibility with ICP deployment. Key changes include:
+### ICP Staking Integration
+- **Automated ICP Staking**: Stake your savings to earn additional rewards through ICP network participation
+- **Neuron Management**: Create and manage ICP neurons with customizable dissolve delays
+- **Rewards Tracking**: Monitor staking rewards and annual percentage yield (APY)
+- **Flexible Unstaking**: Unstake funds when needed with transparent fee structures
 
-- All pages use `"use client"` directive for client-side rendering
-- Context providers wrapped in `ClientOnly` components
-- API calls only execute on the client side
-- Static export configuration in `next.config.ts`
-- No server-side functions or server actions
-- **Local Storage Integration** - Savings analysis data stored in browser localStorage for persistence
+### AI Features
+- **Personalized Suggestions**: AI-generated savings goals based on your income and financial situation
+- **Smart Analysis**: Intelligent insights into your saving patterns and recommendations for improvement
+- **Chat Interface**: Interactive AI assistant to help with financial planning and questions
 
-## Getting Started
+### Security & Authentication
+- **Internet Identity**: Passwordless, biometric authentication for maximum security
+- **Decentralized**: Your data stays private and secure on the Internet Computer
+- **ICRC-1 Compliance**: Standardized token handling following ICP best practices
 
-### 1. Set up your API Keys
+## 🏗️ Project Structure
 
-Create a `.env.local` file in the root directory and add your API keys:
-
-```bash
-# OpenAI API Configuration (Primary)
-OPENAI_API_KEY=your-openai-api-key-here
-
-# OpenRouter API Configuration (Alternative/Backup)
-OPENROUTER_API_KEY=your-openrouter-api-key-here
-
-# ICP Configuration
-NEXT_PUBLIC_IC_HOST=https://ic0.app
-NEXT_PUBLIC_BACKEND_CANISTER_ID=your_backend_canister_id_here
+```
+savr-apps/
+├── src/                          # Backend Motoko canisters
+│   ├── SavingManager.mo          # Main savings functionality
+│   ├── Types.mo                  # Type definitions
+│   └── Utils.mo                  # Utility functions
+├── app/                          # Next.js frontend application
+│   ├── page.tsx                  # Landing page
+│   ├── dashboard/                # Dashboard pages
+│   ├── details/                  # Savings details pages
+│   ├── api/                      # API routes
+│   └── components/               # React components
+├── service/                      # Service layer
+│   ├── icService.ts              # ICP interaction services
+│   ├── backend.did.ts            # Backend interface definitions
+│   └── auth.ts                   # Authentication utilities
+├── contexts/                     # React contexts
+│   ├── ICPPriceContext.tsx       # ICP price management
+│   └── SavingsAnalysisContext.tsx # Savings analysis
+├── lib/                          # Utility libraries
+│   └── openai.ts                 # AI integration
+└── dfx.json                      # DFX configuration
 ```
 
-**API Key Options:**
-- **OpenAI API Key**: Get from [OpenAI's platform](https://platform.openai.com/api-keys)
-- **OpenRouter API Key**: Get from [OpenRouter](https://openrouter.ai/keys) (alternative to OpenAI)
-
-**Note**: The application will use `OPENROUTER_API_KEY` if available, otherwise fall back to `OPENAI_API_KEY`.
-
-### 2. Install dependencies and run the development server
-
-```bash
-# Install dependencies
-npm install
-
-# Run the development server
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## 🚀 Deployment to ICP
+## 🚀 Getting Started
 
 ### Prerequisites
 
-1. Install DFX (DFINITY Canister SDK):
+- [DFX SDK](https://internetcomputer.org/docs/current/developer-docs/build/install-dfx) (version 0.14.1 or higher)
+- [Node.js](https://nodejs.org/) (version 18 or higher)
+- [MOPS Package Manager](https://mops.one/) for Motoko dependencies
+
+### Installation
+
+1. **Clone the repository**
    ```bash
-   sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
+   git clone <repository-url>
+   cd savr-apps
    ```
 
-2. Authenticate with ICP:
+2. **Install dependencies**
    ```bash
-   dfx identity new my-identity
-   dfx identity use my-identity
-   dfx identity get-principal
+   # Install Node.js dependencies
+   npm install
+   
+   # Install Motoko dependencies
+   mops install
    ```
 
-### Deploy to ICP
+3. **Environment Setup**
+   ```bash
+   # Copy environment template
+   cp .env.example .env.local
+   
+   # Add your OpenAI API key for AI features
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
 
-#### Option 1: Using the deployment script (Recommended)
+### Local Development
+
+1. **Start the Internet Computer replica**
+   ```bash
+   dfx start --clean --background
+   ```
+
+2. **Deploy the backend canisters**
+   ```bash
+   dfx deploy
+   ```
+
+3. **Start the frontend development server**
+   ```bash
+   npm run dev
+   ```
+
+4. **Access the application**
+   - Frontend: `http://localhost:3000`
+   - Backend canister: `http://localhost:4943?canisterId={backend_canister_id}`
+
+## 🔧 Configuration
+
+### DFX Configuration
+
+The project uses a standard DFX configuration with:
+- **Backend canister**: Motoko-based savings manager
+- **Frontend canister**: Next.js application assets
+- **Local replica**: For development and testing
+
+### Environment Variables
+
 ```bash
-npm run deploy
+# Required for AI features
+OPENAI_API_KEY=your_openai_api_key
+
+# Optional: Custom ICP ledger canister (defaults to mainnet)
+ICP_LEDGER_CANISTER_ID=ryjl3-tyaaa-aaaaa-aaaba-cai
 ```
 
-#### Option 2: Manual deployment
-```bash
-# Build the application
-npm run build
+## 📱 Usage Examples
 
-# Deploy to ICP
-dfx deploy --network ic
-```
-
-### Environment Variables for Production
-
-Create a `.env.local` file with your production settings:
+### Creating a New Savings Goal
 
 ```bash
-# API Configuration
-OPENAI_API_KEY=your-openai-api-key-here
-OPENROUTER_API_KEY=your-openrouter-api-key-here
-
-# ICP Configuration
-NEXT_PUBLIC_IC_HOST=https://ic0.app
-NEXT_PUBLIC_BACKEND_CANISTER_ID=your_backend_canister_id_here
+# Via DFX CLI
+dfx canister call backend startSaving '(record {
+  savingName = "Dream Vacation";
+  amount = 100_000_000;  // 1 ICP in e8s
+  totalSaving = 1_000_000_000;  // 10 ICP target
+  deadline = 1714696949000000000;  // Timestamp in nanoseconds
+  principalId = "YOUR_PRINCIPAL_ID";
+  isStaking = opt true;
+  priorityLevel = opt 1;
+  savingsRate = opt 10_000_000  // 0.1 ICP per month
+})'
 ```
 
-## 🔧 Build Configuration
+### Frontend Integration
 
-The application is configured for static export with the following settings in `next.config.ts`:
+```typescript
+// Create a new savings goal
+const newSaving = await createSaving(actor, {
+  savingName: "Emergency Fund",
+  amount: "1.0",  // ICP amount
+  totalSaving: "10.0",
+  deadline: "2024-12-31",
+  isStaking: true
+});
 
-- `output: 'export'` - Enables static site generation
-- `trailingSlash: true` - Required for ICP compatibility
-- `images: { unoptimized: true }` - Disables Next.js image optimization
-- Webpack fallbacks for client-side only modules
+// Get user's savings
+const savings = await getUserSavings(actor, principal);
 
-## 📁 Project Structure
-
-```
-vault/
-├── app/                    # Next.js App Router pages
-├── components/             # React components
-│   ├── ClientOnly.tsx     # Client-side only wrapper
-│   └── ui/                # UI components
-├── contexts/              # React contexts (ICP Price only)
-├── hooks/                 # Custom React hooks
-│   ├── useAuth.ts         # Authentication hook
-│   └── useSavingsAnalysis.ts # LocalStorage-based savings data
-├── lib/                   # Utility functions
-│   ├── getAnalyze.ts      # AI analysis with env vars
-│   └── getSuggestions.ts  # AI suggestions with env vars
-├── service/               # ICP service integration
-├── scripts/               # Deployment scripts
-├── next.config.ts         # Next.js configuration
-├── dfx.json              # DFX configuration
-├── env.example           # Environment variables template
-└── package.json          # Dependencies and scripts
+// Stake ICP for additional rewards
+const stakeResult = await stakeICP(actor, {
+  savingId: 1,
+  amount: "5.0",
+  dissolveDelay: 2592000n,  // 30 days
+  principalId: principal.toString()
+});
 ```
 
-## 🛠️ Development
+## 🔗 API Reference
 
-### Available Scripts
+### Core Savings Methods
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run lint` - Run ESLint
-- `npm run deploy` - Build and deploy to ICP
-- `npm run deploy:local` - Deploy to local network
-- `npm run deploy:ic` - Deploy to ICP network
+- `startSaving(request: StartSavingRequest): SavingResponse` - Create a new savings goal
+- `topUpSaving(request: TopUpRequest): TransactionResponse` - Add funds to existing savings
+- `getUserSavings(userId: Text): [Saving]` - Retrieve user's savings goals
+- `withdrawSaving(savingId: SavingId): TransactionResponse` - Withdraw from savings
 
-### Key Files for SSG Compatibility
+### Staking Methods
 
-- `components/ClientOnly.tsx` - Ensures components only render on client
-- `lib/utils.ts` - Client-side utilities
-- `contexts/ICPPriceContext.tsx` - Client-side only context
-- `hooks/useAuth.ts` - Client-side authentication
-- `hooks/useSavingsAnalysis.ts` - LocalStorage-based data persistence
+- `stakeICP(request: StakeICPRequest): StakeResponse` - Stake ICP for rewards
+- `unstakeICP(request: UnstakeRequest): UnstakeResponse` - Unstake ICP
+- `getStakingInfo(savingId: SavingId): ?StakingInfo` - Get staking details
+- `claimStakingRewards(savingId: SavingId, principalId: Text): TransactionResponse` - Claim rewards
 
-## 💾 Data Persistence
+### AI Integration
 
-The application uses localStorage for persisting savings analysis data:
+- `chat(messages: ChatMessage[]): Text` - AI-powered chat assistance
+- `prompt(input: Text): Text` - AI analysis and suggestions
 
-- **Storage Key**: `savr_savings_analysis`
-- **Data Structure**: Includes analysis results, user input, and ICP/USD rate
-- **Benefits**: 
-  - Data persists across browser sessions
-  - No server-side state management required
-  - Perfect for SSG deployment
-  - Reduces context provider complexity
+## 🏛️ Architecture
 
-## 🔐 API Security
+### Backend (Motoko)
+- **SavingManager**: Core business logic for savings and staking
+- **ICRC-1 Integration**: Standard ICP token handling
+- **Neuron Management**: ICP staking through Network Nervous System (NNS)
+- **AI Integration**: OpenAI API integration for intelligent insights
 
-- API keys are stored in environment variables (not in code)
-- Support for both OpenAI and OpenRouter APIs
-- Fallback mechanism for API key selection
-- No API keys are exposed in client-side code
-- Environment variables are loaded at build time
+### Frontend (Next.js + React)
+- **Modern UI/UX**: Tailwind CSS with glassmorphism design
+- **Real-time Updates**: Live ICP price feeds and staking rewards
+- **Responsive Design**: Mobile-first approach with desktop optimization
+- **Context Management**: React contexts for state management
 
-## 🔒 Security
+### Security Features
+- **Internet Identity**: Decentralized authentication
+- **Principal-based Access**: Secure user identification
+- **Transparent Fees**: Clear fee structure for all operations
+- **Audit Trail**: Complete transaction history
 
-- All authentication is handled client-side using Internet Identity
-- No sensitive data is stored on the server
-- API calls are made directly from the client to ICP canisters
-- LocalStorage data is client-side only and not transmitted to servers
-- API keys are secured in environment variables
+## 🎯 Roadmap
 
-## 📚 Learn More
-
-To learn more about the technologies used:
-
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Internet Computer Documentation](https://internetcomputer.org/docs)
-- [DFX Documentation](https://internetcomputer.org/docs/current/developer-docs/setup/install/)
-- [OpenAI API Documentation](https://platform.openai.com/docs)
-- [OpenRouter Documentation](https://openrouter.ai/docs)
+- [ ] **Multi-asset Support**: Support for additional cryptocurrencies
+- [ ] **Advanced AI Features**: More sophisticated financial planning tools
+- [ ] **Social Features**: Savings groups and challenges
+- [ ] **Mobile App**: Native mobile applications
+- [ ] **DeFi Integration**: Integration with other DeFi protocols on ICP
 
 ## 🤝 Contributing
 
-This project is optimized for ICP deployment. When contributing:
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
-1. Ensure all new components use `"use client"` directive
-2. Wrap any client-side only functionality in `ClientOnly` components
-3. Avoid server-side functions or server actions
-4. Use localStorage for data persistence when appropriate
-5. Never hardcode API keys - always use environment variables
-6. Test the build with `npm run build` before deploying
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 Links
+
+- **Internet Computer**: [internetcomputer.org](https://internetcomputer.org)
+- **DFX Documentation**: [internetcomputer.org/docs](https://internetcomputer.org/docs)
+- **ICRC-1 Standard**: [github.com/dfinity/ICRC-1](https://github.com/dfinity/ICRC-1)
+- **Next.js**: [nextjs.org](https://nextjs.org)
+
+## 📞 Support
+
+For support and questions:
+- Open an issue on GitHub
+- Join our community discussions
+- Check the documentation
+
+---
+
+**Built with ❤️ on the Internet Computer**
