@@ -54,6 +54,33 @@ savr-apps/
 └── dfx.json                      # DFX configuration
 ```
 
+## 🌐 Live Application
+
+### Production Links
+- **🌍 Live Website**: [https://poewd-6yaaa-aaaao-a4lqq-cai.icp0.io/](https://poewd-6yaaa-aaaao-a4lqq-cai.icp0.io/)
+- **🔗 Backend Canister**: [https://dashboard.internetcomputer.org/canister/iohvt-tqaaa-aaaam-ael7q-cai](https://dashboard.internetcomputer.org/canister/iohvt-tqaaa-aaaam-ael7q-cai)
+
+### Canister IDs
+- **Backend Canister**: `iohvt-tqaaa-aaaam-ael7q-cai`
+- **Frontend Canister**: `poewd-6yaaa-aaaao-a4lqq-cai`
+
+## 🎨 User Interface
+
+### Screenshots
+
+#### Landing Page
+![SAVR Landing Page](./assets//screenshots/landing-page.png)
+
+#### Dashboard
+![SAVR Dashboard](./assets/screenshots/dashboard.png)
+
+#### Savings Creation
+![Create Savings Goal](./assets/screenshots/create-savings.png)
+
+#### AI Assistant
+![AI Chat Interface](./assets/screenshots/ai-assistant.png)
+
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -233,12 +260,13 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🔗 Links
+## 🔗 Resources & Documentation
 
 - **Internet Computer**: [internetcomputer.org](https://internetcomputer.org)
 - **DFX Documentation**: [internetcomputer.org/docs](https://internetcomputer.org/docs)
 - **ICRC-1 Standard**: [github.com/dfinity/ICRC-1](https://github.com/dfinity/ICRC-1)
 - **Next.js**: [nextjs.org](https://nextjs.org)
+- **Motoko**: [internetcomputer.org/docs/current/motoko](https://internetcomputer.org/docs/current/motoko)
 
 ## 📞 Support
 
